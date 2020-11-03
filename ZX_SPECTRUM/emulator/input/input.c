@@ -51,7 +51,7 @@ uint8_t input_key_get(uint8_t addr)
                 break;
             }
     }
-    logger("%s %02X key %02X\r\n", __func__, addr, key);
+    // logger("%s %02X key %02X\r\n", __func__, addr, key);
     return key;
 }
 
@@ -83,7 +83,7 @@ void parse()
 {
     for (uint8_t i = 0; i < 10; ++i)
     {
-        if (uart_rx_buff[i] == 0xFF)
+        if (uart_rx_buff[i] == 0x00)
         {
             continue;
         }
@@ -138,7 +138,7 @@ void parse()
                 break;
             }
             default:
-                logger("UNKNOWN RX %02X\r\n", uart_rx_buff);
+                // logger("UNKNOWN RX %02X\r\n", uart_rx_buff);
                 break;
         }
         uart_rx_buff[i] = 0xFF;

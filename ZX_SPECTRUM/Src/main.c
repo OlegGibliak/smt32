@@ -47,7 +47,7 @@
 #include "snapshot.h"
 // #include "simcity.h"
 #include "nether_earth2.h"
-
+#include "arkanoids.h"
 /* USER CODE END Includes */
 
 /* Private variables ---------------------------------------------------------*/
@@ -111,6 +111,7 @@ int main(void)
   /* Initialize interrupts */
   MX_NVIC_Init();
   /* USER CODE BEGIN 2 */
+  HAL_Delay(3000);
   emulator_init();
   /* USER CODE END 2 */
 
@@ -128,7 +129,7 @@ int main(void)
   {
     load = false;
     // snapshot_load(SIMCITY_Z80, sizeof(SIMCITY_Z80));
-    snapshot_load(Nether_Earth__1987__Argus_Press_Software__a__z80, sizeof(Nether_Earth__1987__Argus_Press_Software__a__z80));
+    snapshot_load(Arkanoid__1987__Imagine_Software__z80, sizeof(Arkanoid__1987__Imagine_Software__z80));
   }
   // HAL_GPIO_TogglePin(SYS_LED_GPIO_Port, SYS_LED_Pin);
   }

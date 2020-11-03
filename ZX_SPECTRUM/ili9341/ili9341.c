@@ -7,6 +7,7 @@
 ********************************************************************/
 #include "ili9341.h"
 #include "stm32f1xx_hal.h"
+#include "logger.h"
 /********************************************************************
 *                       Constant macro defines                      *
 ********************************************************************/
@@ -444,7 +445,31 @@ void ili9341_mem_write(const uint8_t *data, uint16_t len)
 
     transmition_close();
 }
-#include "logger.h"
+
+void ili9341_8x8block_draw(uint16_t x, uint16_t y, const uint16_t *data)
+{
+    transmition_open();
+    send_cmd(LCD_COLUMN_ADDR);
+
+    send_data16(x);
+    send_data16(x + 7);
+
+
+    send_cmd(LCD_PAGE_ADDR);
+    send_data16(y);
+    send_data16(y + 7);
+
+    send_cmd(LCD_GRAM);
+
+    for (uint16_t i = 0; i < (8 * 8); ++i)
+    {
+        send_data16(*data);
+        data++;
+    }
+    transmition_close();
+}
+
+#if 0
 void ili9341_64block_mem_read(uint16_t x, uint16_t y, uint8_t *data)
 {
     // logger("%s x %d y %d\r\n", __func__, x, y);
@@ -474,7 +499,7 @@ void ili9341_64block_mem_read(uint16_t x, uint16_t y, uint8_t *data)
     transmition_close();
 }
 
-void ili9341_64block_mem_write(uint16_t x, uint16_t y, const uint8_t *data)
+void ili9341_8kblock_mem_write(uint16_t x, uint16_t y, const uint8_t *data)
 {
     // logger("%s x %d y %d\r\n", __func__, x, y);
     transmition_open();
@@ -498,30 +523,62 @@ void ili9341_64block_mem_write(uint16_t x, uint16_t y, const uint8_t *data)
     }
     transmition_close();
 }
+#else
 
-void ili9341_8x8block_draw(uint16_t x, uint16_t y, const uint16_t *data)
+void ili9341_mem_read_rect(uint16_t x, uint16_t w, uint16_t y, uint16_t h, uint8_t *data, uint16_t len)
 {
     transmition_open();
     send_cmd(LCD_COLUMN_ADDR);
 
     send_data16(x);
-    send_data16(x + 7);
+    send_data16(x + w-1);
 
 
     send_cmd(LCD_PAGE_ADDR);
     send_data16(y);
-    send_data16(y + 7);
+    send_data16(y + h-1);
 
-    send_cmd(LCD_GRAM);
+    send_cmd(LCD_RAMRD);
+    (void)read_data();  /* Dummy data. */
+    uint16_t *data_u16 = (uint16_t *)data;
 
-    for (uint16_t i = 0; i < (8 * 8); ++i)
+    len = len / sizeof(uint16_t);
+    
+    for (size_t i = 0; i < len; i++)
     {
-        send_data16(*data);
-        data++;
+        uint8_t raw[3];
+        read_multi_data(raw, sizeof(raw));
+        data_u16[i]  = (raw[0] >> 3) << 11;
+        data_u16[i] |= (raw[1] >> 2) << 5;
+        data_u16[i] |= (raw[2] >> 3);
     }
+
     transmition_close();
 }
 
+void ili9341_mem_write_rect(uint16_t x, uint16_t w, uint16_t y, uint16_t h, const uint8_t *data, uint16_t len)
+{
+    transmition_open();
+    send_cmd(LCD_COLUMN_ADDR);
+
+    send_data16(x);
+    send_data16(x + w-1);
+
+    send_cmd(LCD_PAGE_ADDR);
+    send_data16(y);
+    send_data16(y + h-1);
+
+    send_cmd(LCD_GRAM);
+
+    uint16_t *data_u16 = (uint16_t *) data;
+    len = len / sizeof(uint16_t);
+    while (len--)
+    {
+        send_data16(*data_u16++);
+    }
+    transmition_close();
+}
+#endif
 void ili9341_fill_rect(uint16_t x, uint16_t w, uint16_t y, uint16_t h, uint16_t color)
 {
     transmition_open();

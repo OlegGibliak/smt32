@@ -147,11 +147,8 @@ ifeq ($(DEBUG), 1)
 CFLAGS += -g -gdwarf-2
 endif
 
-# CFLAGS += -DSPECTRUM_TEST_ROM
 CFLAGS += -DSPECTRUM_ROM
-# CFLAGS += -DSPECTRUM_TEST_DEMO
-# CFLAGS += -DSPECTRUM_TEST_DEMO2
-
+# CFLAGS += -DSPECTRUM_TEST_ROM
 
 # Generate dependency information
 CFLAGS += -MMD -MP -MF"$(@:%.o=%.d)"

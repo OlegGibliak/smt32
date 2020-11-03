@@ -69,9 +69,13 @@ void ili9341_set_address_windows(uint16_t x, uint16_t w, uint16_t y, uint16_t h)
 void ili9341_mem_read(uint8_t *data, uint16_t len, bool skip_first_byte);
 void ili9341_mem_write(const uint8_t *data, uint16_t len);
 
+#if 0
 void ili9341_64block_mem_write(uint16_t x, uint16_t y, const uint8_t *data);
 void ili9341_64block_mem_read(uint16_t x, uint16_t y, uint8_t *data);
-
+#else
+void ili9341_mem_read_rect(uint16_t x, uint16_t w, uint16_t y, uint16_t h, uint8_t *data, uint16_t len);
+void ili9341_mem_write_rect(uint16_t x, uint16_t w, uint16_t y, uint16_t h, const uint8_t *data, uint16_t len);
+#endif
 void ili9341_8x8block_draw(uint16_t x, uint16_t y, const uint16_t *data);
 
 void ili9341_fill_rect(uint16_t x, uint16_t w, uint16_t y, uint16_t h, uint16_t color);
