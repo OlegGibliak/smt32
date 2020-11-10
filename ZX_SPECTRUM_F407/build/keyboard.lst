@@ -1,0 +1,272 @@
+ARM GAS  /tmp/ccz7T3GM.s 			page 1
+
+
+   1              		.cpu cortex-m4
+   2              		.eabi_attribute 27, 1
+   3              		.eabi_attribute 28, 1
+   4              		.eabi_attribute 20, 1
+   5              		.eabi_attribute 21, 1
+   6              		.eabi_attribute 23, 3
+   7              		.eabi_attribute 24, 1
+   8              		.eabi_attribute 25, 1
+   9              		.eabi_attribute 26, 1
+  10              		.eabi_attribute 30, 1
+  11              		.eabi_attribute 34, 1
+  12              		.eabi_attribute 18, 4
+  13              		.file	"keyboard.c"
+  14              		.text
+  15              	.Ltext0:
+  16              		.cfi_sections	.debug_frame
+  17              		.section	.text.keyboard_scan,"ax",%progbits
+  18              		.align	1
+  19              		.global	keyboard_scan
+  20              		.arch armv7e-m
+  21              		.syntax unified
+  22              		.thumb
+  23              		.thumb_func
+  24              		.fpu fpv4-sp-d16
+  26              	keyboard_scan:
+  27              	.LFB126:
+  28              		.file 1 "keyboard/keyboard.c"
+   1:keyboard/keyboard.c **** #include "keyboard.h"
+   2:keyboard/keyboard.c **** #include "stm32f407xx.h"
+   3:keyboard/keyboard.c **** #include "stm32f4xx_hal.h"
+   4:keyboard/keyboard.c **** #include "logger.h"
+   5:keyboard/keyboard.c **** #include "input.h"
+   6:keyboard/keyboard.c **** 
+   7:keyboard/keyboard.c **** /*
+   8:keyboard/keyboard.c ****  * SCAN PORTA 0 ... 5  6 bits
+   9:keyboard/keyboard.c ****  * SCAN PORTE 0 ... 6  7 bits
+  10:keyboard/keyboard.c ****  * 
+  11:keyboard/keyboard.c ****  * SIGN PORTC 0 ... 7  8 bits
+  12:keyboard/keyboard.c **** */
+  13:keyboard/keyboard.c **** #define KEYBOARD_ROWS       (8)
+  14:keyboard/keyboard.c **** #define KEYBOARD_COLUMNS    (13)
+  15:keyboard/keyboard.c **** #define KEYB_SIGN_Port      (GPIOC)
+  16:keyboard/keyboard.c **** #define KEYB_SCAN_PortA     (GPIOA)
+  17:keyboard/keyboard.c **** #define KEYB_SCAN_PortE     (GPIOE)
+  18:keyboard/keyboard.c **** 
+  19:keyboard/keyboard.c **** typedef union
+  20:keyboard/keyboard.c **** {
+  21:keyboard/keyboard.c ****     struct
+  22:keyboard/keyboard.c ****     {
+  23:keyboard/keyboard.c ****         uint16_t addr :13;
+  24:keyboard/keyboard.c ****         uint16_t row  :3;
+  25:keyboard/keyboard.c ****     };
+  26:keyboard/keyboard.c ****     keys_t key;
+  27:keyboard/keyboard.c **** } key_info_t;
+  28:keyboard/keyboard.c **** 
+  29:keyboard/keyboard.c **** // void keyboard_init(void)
+  30:keyboard/keyboard.c **** // {
+ARM GAS  /tmp/ccz7T3GM.s 			page 2
+
+
+  31:keyboard/keyboard.c **** //     KEYB_SIGN_Port->MODER &= 0xFFFF;
+  32:keyboard/keyboard.c **** // }
+  33:keyboard/keyboard.c **** // static uint16_t key_arr[8];
+  34:keyboard/keyboard.c **** 
+  35:keyboard/keyboard.c **** /*
+  36:keyboard/keyboard.c ****     UP    - 7
+  37:keyboard/keyboard.c ****     DOWN  - 6
+  38:keyboard/keyboard.c ****     LEFT  - 5
+  39:keyboard/keyboard.c ****     RIGHT - 8
+  40:keyboard/keyboard.c ****     FIRE  - 0
+  41:keyboard/keyboard.c **** */
+  42:keyboard/keyboard.c **** void keyboard_scan(void)
+  43:keyboard/keyboard.c **** {
+  29              		.loc 1 43 1 view -0
+  30              		.cfi_startproc
+  31              		@ args = 0, pretend = 0, frame = 0
+  32              		@ frame_needed = 0, uses_anonymous_args = 0
+  33 0000 38B5     		push	{r3, r4, r5, lr}
+  34              	.LCFI0:
+  35              		.cfi_def_cfa_offset 16
+  36              		.cfi_offset 3, -16
+  37              		.cfi_offset 4, -12
+  38              		.cfi_offset 5, -8
+  39              		.cfi_offset 14, -4
+  44:keyboard/keyboard.c ****     for (uint8_t row = 0; row < KEYBOARD_ROWS; ++row)
+  40              		.loc 1 44 5 view .LVU1
+  41              	.LBB2:
+  42              		.loc 1 44 10 view .LVU2
+  43              	.LVL0:
+  44              		.loc 1 44 18 is_stmt 0 view .LVU3
+  45 0002 0024     		movs	r4, #0
+  46              		.loc 1 44 5 view .LVU4
+  47 0004 16E0     		b	.L2
+  48              	.LVL1:
+  49              	.L10:
+  50              	.LBB3:
+  45:keyboard/keyboard.c ****     {
+  46:keyboard/keyboard.c ****         KEYB_SIGN_Port->BSRR = 0xFF;
+  47:keyboard/keyboard.c ****         KEYB_SIGN_Port->BSRR = (1 << row) << 16;
+  48:keyboard/keyboard.c ****         uint32_t delay = 10;
+  49:keyboard/keyboard.c ****         while (delay--)
+  50:keyboard/keyboard.c ****             asm("nop");
+  51:keyboard/keyboard.c ****         // HAL_Delay(1);
+  52:keyboard/keyboard.c ****         key_info_t data;
+  51              		.loc 1 52 9 is_stmt 1 view .LVU5
+  53:keyboard/keyboard.c ****         data.addr = (KEYB_SCAN_PortE->IDR & 0x7F) << 6;
+  52              		.loc 1 53 9 view .LVU6
+  53              		.loc 1 53 37 is_stmt 0 view .LVU7
+  54 0006 03F18043 		add	r3, r3, #1073741824
+  55 000a 03F50433 		add	r3, r3, #135168
+  56 000e 1B69     		ldr	r3, [r3, #16]
+  57              		.loc 1 53 51 view .LVU8
+  58 0010 9B01     		lsls	r3, r3, #6
+  54:keyboard/keyboard.c ****         data.addr |= (KEYB_SCAN_PortA->IDR & 0x3F);
+  59              		.loc 1 54 9 is_stmt 1 view .LVU9
+  60              		.loc 1 54 38 is_stmt 0 view .LVU10
+  61 0012 144A     		ldr	r2, .L11
+ARM GAS  /tmp/ccz7T3GM.s 			page 3
+
+
+  62              	.LVL2:
+  63              		.loc 1 54 38 view .LVU11
+  64 0014 1269     		ldr	r2, [r2, #16]
+  65              		.loc 1 54 44 view .LVU12
+  66 0016 02F03F02 		and	r2, r2, #63
+  67              		.loc 1 54 19 view .LVU13
+  68 001a 03F4FE53 		and	r3, r3, #8128
+  69 001e 1343     		orrs	r3, r3, r2
+  70 0020 63F30C05 		bfi	r5, r3, #0, #13
+  55:keyboard/keyboard.c **** 
+  56:keyboard/keyboard.c ****         if (data.addr != 0x1FFF)
+  71              		.loc 1 56 9 is_stmt 1 view .LVU14
+  72              		.loc 1 56 23 is_stmt 0 view .LVU15
+  73 0024 C5F30C02 		ubfx	r2, r5, #0, #13
+  74              		.loc 1 56 12 view .LVU16
+  75 0028 41F6FF73 		movw	r3, #8191
+  76 002c 9A42     		cmp	r2, r3
+  77 002e 11D1     		bne	.L8
+  78              	.L5:
+  79              	.LBE3:
+  44:keyboard/keyboard.c ****     {
+  80              		.loc 1 44 48 is_stmt 1 discriminator 2 view .LVU17
+  81 0030 0134     		adds	r4, r4, #1
+  82              	.LVL3:
+  44:keyboard/keyboard.c ****     {
+  83              		.loc 1 44 48 is_stmt 0 discriminator 2 view .LVU18
+  84 0032 E4B2     		uxtb	r4, r4
+  85              	.LVL4:
+  86              	.L2:
+  44:keyboard/keyboard.c ****     {
+  87              		.loc 1 44 27 is_stmt 1 discriminator 1 view .LVU19
+  44:keyboard/keyboard.c ****     {
+  88              		.loc 1 44 5 is_stmt 0 discriminator 1 view .LVU20
+  89 0034 072C     		cmp	r4, #7
+  90 0036 13D8     		bhi	.L9
+  91              	.LBB4:
+  46:keyboard/keyboard.c ****         KEYB_SIGN_Port->BSRR = (1 << row) << 16;
+  92              		.loc 1 46 9 is_stmt 1 view .LVU21
+  46:keyboard/keyboard.c ****         KEYB_SIGN_Port->BSRR = (1 << row) << 16;
+  93              		.loc 1 46 30 is_stmt 0 view .LVU22
+  94 0038 0B4A     		ldr	r2, .L11+4
+  95 003a FF23     		movs	r3, #255
+  96 003c 9361     		str	r3, [r2, #24]
+  47:keyboard/keyboard.c ****         uint32_t delay = 10;
+  97              		.loc 1 47 9 is_stmt 1 view .LVU23
+  47:keyboard/keyboard.c ****         uint32_t delay = 10;
+  98              		.loc 1 47 35 is_stmt 0 view .LVU24
+  99 003e 0123     		movs	r3, #1
+ 100 0040 A340     		lsls	r3, r3, r4
+  47:keyboard/keyboard.c ****         uint32_t delay = 10;
+ 101              		.loc 1 47 43 view .LVU25
+ 102 0042 1B04     		lsls	r3, r3, #16
+  47:keyboard/keyboard.c ****         uint32_t delay = 10;
+ 103              		.loc 1 47 30 view .LVU26
+ 104 0044 9361     		str	r3, [r2, #24]
+  48:keyboard/keyboard.c ****         while (delay--)
+ 105              		.loc 1 48 9 is_stmt 1 view .LVU27
+ARM GAS  /tmp/ccz7T3GM.s 			page 4
+
+
+ 106              	.LVL5:
+  49:keyboard/keyboard.c ****             asm("nop");
+ 107              		.loc 1 49 9 view .LVU28
+  48:keyboard/keyboard.c ****         while (delay--)
+ 108              		.loc 1 48 18 is_stmt 0 view .LVU29
+ 109 0046 0A23     		movs	r3, #10
+ 110              	.LVL6:
+ 111              	.L3:
+  49:keyboard/keyboard.c ****             asm("nop");
+ 112              		.loc 1 49 15 is_stmt 1 view .LVU30
+  49:keyboard/keyboard.c ****             asm("nop");
+ 113              		.loc 1 49 21 is_stmt 0 view .LVU31
+ 114 0048 5A1E     		subs	r2, r3, #1
+ 115              	.LVL7:
+  49:keyboard/keyboard.c ****             asm("nop");
+ 116              		.loc 1 49 15 view .LVU32
+ 117 004a 002B     		cmp	r3, #0
+ 118 004c DBD0     		beq	.L10
+  50:keyboard/keyboard.c ****         // HAL_Delay(1);
+ 119              		.loc 1 50 13 is_stmt 1 view .LVU33
+ 120              		.syntax unified
+ 121              	@ 50 "keyboard/keyboard.c" 1
+ 122 004e 00BF     		nop
+ 123              	@ 0 "" 2
+  49:keyboard/keyboard.c ****             asm("nop");
+ 124              		.loc 1 49 21 is_stmt 0 view .LVU34
+ 125              		.thumb
+ 126              		.syntax unified
+ 127 0050 1346     		mov	r3, r2
+ 128 0052 F9E7     		b	.L3
+ 129              	.LVL8:
+ 130              	.L8:
+  57:keyboard/keyboard.c ****         {
+  58:keyboard/keyboard.c ****             data.row = row;
+ 131              		.loc 1 58 13 is_stmt 1 view .LVU35
+ 132              		.loc 1 58 22 is_stmt 0 view .LVU36
+ 133 0054 64F34F35 		bfi	r5, r4, #13, #3
+  59:keyboard/keyboard.c ****             // logger("%s row %02X key %04X, int %04X key %04X\r\n", __func__,
+  60:keyboard/keyboard.c ****             // data.row, data.addr, data.key, (0x1FFF - data.addr));
+  61:keyboard/keyboard.c ****             input_key_set(data.key);
+ 134              		.loc 1 61 13 is_stmt 1 view .LVU37
+ 135 0058 A8B2     		uxth	r0, r5
+ 136 005a FFF7FEFF 		bl	input_key_set
+ 137              	.LVL9:
+ 138 005e E7E7     		b	.L5
+ 139              	.L9:
+ 140              		.loc 1 61 13 is_stmt 0 view .LVU38
+ 141              	.LBE4:
+ 142              	.LBE2:
+  62:keyboard/keyboard.c ****         }
+  63:keyboard/keyboard.c ****     }
+  64:keyboard/keyboard.c **** }...
+ 143              		.loc 1 64 1 view .LVU39
+ 144 0060 38BD     		pop	{r3, r4, r5, pc}
+ 145              	.LVL10:
+ 146              	.L12:
+ 147              		.loc 1 64 1 view .LVU40
+ARM GAS  /tmp/ccz7T3GM.s 			page 5
+
+
+ 148 0062 00BF     		.align	2
+ 149              	.L11:
+ 150 0064 00000240 		.word	1073872896
+ 151 0068 00080240 		.word	1073874944
+ 152              		.cfi_endproc
+ 153              	.LFE126:
+ 155              		.text
+ 156              	.Letext0:
+ 157              		.file 2 "/usr/lib/gcc/arm-none-eabi/9.2.1/include/stdint.h"
+ 158              		.file 3 "keyboard/keyboard.h"
+ 159              		.file 4 "Drivers/CMSIS/Include/core_cm4.h"
+ 160              		.file 5 "Drivers/CMSIS/Device/ST/STM32F4xx/Include/system_stm32f4xx.h"
+ 161              		.file 6 "Drivers/CMSIS/Device/ST/STM32F4xx/Include/stm32f407xx.h"
+ 162              		.file 7 "/usr/lib/gcc/arm-none-eabi/9.2.1/include/stddef.h"
+ 163              		.file 8 "/usr/include/newlib/sys/_types.h"
+ 164              		.file 9 "/usr/include/newlib/sys/reent.h"
+ 165              		.file 10 "/usr/include/newlib/sys/lock.h"
+ 166              		.file 11 "emulator/input/input.h"
+ARM GAS  /tmp/ccz7T3GM.s 			page 6
+
+
+DEFINED SYMBOLS
+                            *ABS*:0000000000000000 keyboard.c
+     /tmp/ccz7T3GM.s:18     .text.keyboard_scan:0000000000000000 $t
+     /tmp/ccz7T3GM.s:26     .text.keyboard_scan:0000000000000000 keyboard_scan
+     /tmp/ccz7T3GM.s:150    .text.keyboard_scan:0000000000000064 $d
+
+UNDEFINED SYMBOLS
+input_key_set

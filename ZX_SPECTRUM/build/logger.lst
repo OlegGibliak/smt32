@@ -1,0 +1,173 @@
+ARM GAS  /tmp/cct618wF.s 			page 1
+
+
+   1              		.cpu cortex-m3
+   2              		.eabi_attribute 20, 1
+   3              		.eabi_attribute 21, 1
+   4              		.eabi_attribute 23, 3
+   5              		.eabi_attribute 24, 1
+   6              		.eabi_attribute 25, 1
+   7              		.eabi_attribute 26, 1
+   8              		.eabi_attribute 30, 1
+   9              		.eabi_attribute 34, 1
+  10              		.eabi_attribute 18, 4
+  11              		.file	"logger.c"
+  12              		.text
+  13              	.Ltext0:
+  14              		.cfi_sections	.debug_frame
+  15              		.section	.text.logger,"ax",%progbits
+  16              		.align	1
+  17              		.global	logger
+  18              		.arch armv7-m
+  19              		.syntax unified
+  20              		.thumb
+  21              		.thumb_func
+  22              		.fpu softvfp
+  24              	logger:
+  25              	.LVL0:
+  26              	.LFB66:
+  27              		.file 1 "logger/logger.c"
+   1:logger/logger.c **** #include <string.h>
+   2:logger/logger.c **** #include <stdarg.h>
+   3:logger/logger.c **** #include <stdio.h>
+   4:logger/logger.c **** #include <stdint.h>
+   5:logger/logger.c **** 
+   6:logger/logger.c **** #include "stm32f1xx_hal.h"
+   7:logger/logger.c **** 
+   8:logger/logger.c **** #define LOGGER_BUFFER_SIZE  (200)
+   9:logger/logger.c **** 
+  10:logger/logger.c **** typedef struct
+  11:logger/logger.c **** {
+  12:logger/logger.c ****     uint8_t length;
+  13:logger/logger.c ****     uint8_t data[LOGGER_BUFFER_SIZE];
+  14:logger/logger.c **** } buffer_t;
+  15:logger/logger.c **** 
+  16:logger/logger.c **** extern UART_HandleTypeDef huart1;
+  17:logger/logger.c **** static buffer_t buffer;
+  18:logger/logger.c **** 
+  19:logger/logger.c **** void logger(const char * format, ...)
+  20:logger/logger.c **** {
+  28              		.loc 1 20 1 view -0
+  29              		.cfi_startproc
+  30              		@ args = 4, pretend = 16, frame = 8
+  31              		@ frame_needed = 0, uses_anonymous_args = 1
+  32              		.loc 1 20 1 is_stmt 0 view .LVU1
+  33 0000 0FB4     		push	{r0, r1, r2, r3}
+  34              	.LCFI0:
+  35              		.cfi_def_cfa_offset 16
+  36              		.cfi_offset 0, -16
+  37              		.cfi_offset 1, -12
+  38              		.cfi_offset 2, -8
+ARM GAS  /tmp/cct618wF.s 			page 2
+
+
+  39              		.cfi_offset 3, -4
+  40 0002 30B5     		push	{r4, r5, lr}
+  41              	.LCFI1:
+  42              		.cfi_def_cfa_offset 28
+  43              		.cfi_offset 4, -28
+  44              		.cfi_offset 5, -24
+  45              		.cfi_offset 14, -20
+  46 0004 83B0     		sub	sp, sp, #12
+  47              	.LCFI2:
+  48              		.cfi_def_cfa_offset 40
+  49 0006 06AB     		add	r3, sp, #24
+  50 0008 53F8042B 		ldr	r2, [r3], #4
+  21:logger/logger.c ****     va_list args;
+  51              		.loc 1 21 5 is_stmt 1 view .LVU2
+  22:logger/logger.c ****     va_start(args, format);
+  52              		.loc 1 22 5 view .LVU3
+  53 000c 0193     		str	r3, [sp, #4]
+  23:logger/logger.c ****     buffer.length = vsnprintf((char *) buffer.data, sizeof(buffer.data), format, args);
+  54              		.loc 1 23 5 view .LVU4
+  55              		.loc 1 23 21 is_stmt 0 view .LVU5
+  56 000e 094D     		ldr	r5, .L3
+  57 0010 6C1C     		adds	r4, r5, #1
+  58 0012 C821     		movs	r1, #200
+  59 0014 2046     		mov	r0, r4
+  60 0016 FFF7FEFF 		bl	vsnprintf
+  61              	.LVL1:
+  62              		.loc 1 23 19 view .LVU6
+  63 001a C2B2     		uxtb	r2, r0
+  64 001c 2A70     		strb	r2, [r5]
+  24:logger/logger.c ****     va_end(args);
+  65              		.loc 1 24 5 is_stmt 1 view .LVU7
+  25:logger/logger.c **** 
+  26:logger/logger.c ****     HAL_UART_Transmit(&huart1, buffer.data, buffer.length, HAL_MAX_DELAY);
+  66              		.loc 1 26 5 view .LVU8
+  67 001e 4FF0FF33 		mov	r3, #-1
+  68 0022 2146     		mov	r1, r4
+  69 0024 0448     		ldr	r0, .L3+4
+  70 0026 FFF7FEFF 		bl	HAL_UART_Transmit
+  71              	.LVL2:
+  27:logger/logger.c **** }...
+  72              		.loc 1 27 1 is_stmt 0 view .LVU9
+  73 002a 03B0     		add	sp, sp, #12
+  74              	.LCFI3:
+  75              		.cfi_def_cfa_offset 28
+  76              		@ sp needed
+  77 002c BDE83040 		pop	{r4, r5, lr}
+  78              	.LCFI4:
+  79              		.cfi_restore 14
+  80              		.cfi_restore 5
+  81              		.cfi_restore 4
+  82              		.cfi_def_cfa_offset 16
+  83 0030 04B0     		add	sp, sp, #16
+  84              	.LCFI5:
+  85              		.cfi_restore 3
+  86              		.cfi_restore 2
+  87              		.cfi_restore 1
+  88              		.cfi_restore 0
+ARM GAS  /tmp/cct618wF.s 			page 3
+
+
+  89              		.cfi_def_cfa_offset 0
+  90 0032 7047     		bx	lr
+  91              	.L4:
+  92              		.align	2
+  93              	.L3:
+  94 0034 00000000 		.word	.LANCHOR0
+  95 0038 00000000 		.word	huart1
+  96              		.cfi_endproc
+  97              	.LFE66:
+  99              		.section	.bss.buffer,"aw",%nobits
+ 100              		.align	2
+ 101              		.set	.LANCHOR0,. + 0
+ 104              	buffer:
+ 105 0000 00000000 		.space	201
+ 105      00000000 
+ 105      00000000 
+ 105      00000000 
+ 105      00000000 
+ 106              		.text
+ 107              	.Letext0:
+ 108              		.file 2 "/usr/lib/gcc/arm-none-eabi/9.2.1/include/stddef.h"
+ 109              		.file 3 "/usr/include/newlib/machine/_default_types.h"
+ 110              		.file 4 "/usr/include/newlib/sys/_types.h"
+ 111              		.file 5 "/usr/include/newlib/sys/reent.h"
+ 112              		.file 6 "/usr/include/newlib/sys/lock.h"
+ 113              		.file 7 "/usr/lib/gcc/arm-none-eabi/9.2.1/include/stdarg.h"
+ 114              		.file 8 "/usr/include/newlib/sys/_stdint.h"
+ 115              		.file 9 "Drivers/CMSIS/Include/core_cm3.h"
+ 116              		.file 10 "Drivers/CMSIS/Device/ST/STM32F1xx/Include/system_stm32f1xx.h"
+ 117              		.file 11 "Drivers/CMSIS/Device/ST/STM32F1xx/Include/stm32f103xb.h"
+ 118              		.file 12 "Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_def.h"
+ 119              		.file 13 "Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_dma.h"
+ 120              		.file 14 "Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_uart.h"
+ 121              		.file 15 "/usr/include/newlib/stdio.h"
+ 122              		.file 16 "<built-in>"
+ARM GAS  /tmp/cct618wF.s 			page 4
+
+
+DEFINED SYMBOLS
+                            *ABS*:0000000000000000 logger.c
+     /tmp/cct618wF.s:16     .text.logger:0000000000000000 $t
+     /tmp/cct618wF.s:24     .text.logger:0000000000000000 logger
+     /tmp/cct618wF.s:94     .text.logger:0000000000000034 $d
+     /tmp/cct618wF.s:100    .bss.buffer:0000000000000000 $d
+     /tmp/cct618wF.s:104    .bss.buffer:0000000000000000 buffer
+
+UNDEFINED SYMBOLS
+vsnprintf
+HAL_UART_Transmit
+huart1

@@ -1,0 +1,976 @@
+ARM GAS  /tmp/cc3b9E7O.s 			page 1
+
+
+   1              		.cpu cortex-m3
+   2              		.eabi_attribute 20, 1
+   3              		.eabi_attribute 21, 1
+   4              		.eabi_attribute 23, 3
+   5              		.eabi_attribute 24, 1
+   6              		.eabi_attribute 25, 1
+   7              		.eabi_attribute 26, 1
+   8              		.eabi_attribute 30, 1
+   9              		.eabi_attribute 34, 1
+  10              		.eabi_attribute 18, 4
+  11              		.file	"screen.c"
+  12              		.text
+  13              	.Ltext0:
+  14              		.cfi_sections	.debug_frame
+  15              		.section	.rodata.screen_mem_write.str1.4,"aMS",%progbits,1
+  16              		.align	2
+  17              	.LC0:
+  18 0000 25732069 		.ascii	"%s invalid addr %04X data %02X\015\012\000"
+  18      6E76616C 
+  18      69642061 
+  18      64647220 
+  18      25303458 
+  19              		.section	.text.screen_mem_write,"ax",%progbits
+  20              		.align	1
+  21              		.global	screen_mem_write
+  22              		.arch armv7-m
+  23              		.syntax unified
+  24              		.thumb
+  25              		.thumb_func
+  26              		.fpu softvfp
+  28              	screen_mem_write:
+  29              	.LVL0:
+  30              	.LFB0:
+  31              		.file 1 "emulator/video/screen.c"
+   1:emulator/video/screen.c **** #include "screen.h"
+   2:emulator/video/screen.c **** #include "logger.h"
+   3:emulator/video/screen.c **** #include "ili9341.h"
+   4:emulator/video/screen.c **** 
+   5:emulator/video/screen.c **** #define SCREEN_DISPLAY_ATTRIBUTES_W     (32)
+   6:emulator/video/screen.c **** #define SCREEN_DISPLAY_ATTRIBUTES_H     (24)
+   7:emulator/video/screen.c **** 
+   8:emulator/video/screen.c **** #define SCREEN_DISPLAY_W                (256)
+   9:emulator/video/screen.c **** #define SCREEN_DISPLAY_H                (192)
+  10:emulator/video/screen.c **** #define SCREEN_DISPLAY_ADDR_START_X     (64)
+  11:emulator/video/screen.c **** // #define SCREEN_DISPLAY_ADDR_END_X       (SCREEN_DISPLAY_ADDR_START_X + SCREEN_DISPLAY_W - 1)
+  12:emulator/video/screen.c **** #define SCREEN_DISPLAY_ADDR_START_Y     (48)
+  13:emulator/video/screen.c **** // #define SCREEN_DISPLAY_ADDR_END_Y       (SCREEN_DISPLAY_ADDR_START_Y + SCREEN_DISPLAY_H - 1)
+  14:emulator/video/screen.c **** 
+  15:emulator/video/screen.c **** 
+  16:emulator/video/screen.c **** #define SCREEN_AREA_START    (0x4000)
+  17:emulator/video/screen.c **** #define SCREEN_AREA_END      (0x57FF)
+  18:emulator/video/screen.c **** #define SCREEN_ATTR_START    (SCREEN_AREA_END + 1)
+  19:emulator/video/screen.c **** #define SCREEN_ATTR_END      (0x5AFF)
+  20:emulator/video/screen.c **** 
+  21:emulator/video/screen.c **** #define SCREEN_THIRDS        (3)
+  22:emulator/video/screen.c **** #define SCREEN_CHARS_ROW     (8)
+  23:emulator/video/screen.c **** #define SCREEN_ROWS          (8)
+ARM GAS  /tmp/cc3b9E7O.s 			page 2
+
+
+  24:emulator/video/screen.c **** #define SCREEN_BYTES_IN_LINE (32)
+  25:emulator/video/screen.c **** 
+  26:emulator/video/screen.c **** #define THIRDS(_addr_)       ((_addr_ >> 11) & 0b11)
+  27:emulator/video/screen.c **** #define CHAR(_addr_)         ((_addr_ >> 8)  & 0b111)
+  28:emulator/video/screen.c **** #define ROW(_addr_)          ((_addr_ >> 5)  & 0b111)
+  29:emulator/video/screen.c **** #define BYTE_IN_LINE(_addr_) (_addr_ & 0b11111)
+  30:emulator/video/screen.c **** 
+  31:emulator/video/screen.c **** #define SCREEN_SINCLAR_COLORS_NUM       (16)
+  32:emulator/video/screen.c **** 
+  33:emulator/video/screen.c **** typedef union
+  34:emulator/video/screen.c **** {
+  35:emulator/video/screen.c ****     struct {
+  36:emulator/video/screen.c ****         uint8_t ink    : 3;
+  37:emulator/video/screen.c ****         uint8_t paper  : 3;
+  38:emulator/video/screen.c ****         uint8_t bright : 1;
+  39:emulator/video/screen.c ****         uint8_t flash  : 1;
+  40:emulator/video/screen.c ****     };
+  41:emulator/video/screen.c ****     uint8_t intr;
+  42:emulator/video/screen.c **** } char_attribute_t;
+  43:emulator/video/screen.c **** 
+  44:emulator/video/screen.c **** /*
+  45:emulator/video/screen.c ****  * 15 14 13 12 11 10  9  8  7  6  5  4  3  2  1  0
+  46:emulator/video/screen.c ****  *  0  1  0  T  T  S  S  S  C  C  C  H  H  H  H  H
+  47:emulator/video/screen.c ****  * 010 - 0x4000
+  48:emulator/video/screen.c ****  * T   - THIRDS
+  49:emulator/video/screen.c ****  * S   - CHAR in thirds
+  50:emulator/video/screen.c ****  * C   - ROW in char
+  51:emulator/video/screen.c ****  * H   - 32 bytes of line (256 bits)
+  52:emulator/video/screen.c ****  */
+  53:emulator/video/screen.c **** static uint8_t          screen_area[SCREEN_THIRDS]
+  54:emulator/video/screen.c ****                                    [SCREEN_CHARS_ROW]
+  55:emulator/video/screen.c ****                                    [SCREEN_ROWS]
+  56:emulator/video/screen.c ****                                    [SCREEN_BYTES_IN_LINE];
+  57:emulator/video/screen.c **** static char_attribute_t char_attribute[SCREEN_THIRDS * SCREEN_CHARS_ROW * SCREEN_BYTES_IN_LINE];
+  58:emulator/video/screen.c **** static uint16_t         colors_565[SCREEN_SINCLAR_COLORS_NUM] = 
+  59:emulator/video/screen.c ****     {0x0000, 0x001A, 0xD000, 0xD01A, 0x06A0, 0x06BA, 0xD6A0, 0xD6BA,
+  60:emulator/video/screen.c ****      0x0000, 0x001F, 0xF800, 0xF81F, 0x07E0, 0x07FF, 0xFFE0, 0xFFFF};
+  61:emulator/video/screen.c **** static char_attribute_t border;
+  62:emulator/video/screen.c **** 
+  63:emulator/video/screen.c **** void screen_mem_write(uint16_t addr, uint8_t data)
+  64:emulator/video/screen.c **** {
+  32              		.loc 1 64 1 view -0
+  33              		.cfi_startproc
+  34              		@ args = 0, pretend = 0, frame = 0
+  35              		@ frame_needed = 0, uses_anonymous_args = 0
+  36              		.loc 1 64 1 is_stmt 0 view .LVU1
+  37 0000 10B5     		push	{r4, lr}
+  38              	.LCFI0:
+  39              		.cfi_def_cfa_offset 8
+  40              		.cfi_offset 4, -8
+  41              		.cfi_offset 14, -4
+  65:emulator/video/screen.c ****     if (addr >= SCREEN_AREA_START && addr <= SCREEN_AREA_END)
+  42              		.loc 1 65 5 is_stmt 1 view .LVU2
+  43              		.loc 1 65 35 is_stmt 0 view .LVU3
+  44 0002 A0F58043 		sub	r3, r0, #16384
+  45 0006 9BB2     		uxth	r3, r3
+  46              		.loc 1 65 8 view .LVU4
+ARM GAS  /tmp/cc3b9E7O.s 			page 3
+
+
+  47 0008 B3F5C05F 		cmp	r3, #6144
+  48 000c 10D2     		bcs	.L2
+  66:emulator/video/screen.c ****     {
+  67:emulator/video/screen.c ****         screen_area[THIRDS(addr)][CHAR(addr)][ROW(addr)][BYTE_IN_LINE(addr)] = data;
+  49              		.loc 1 67 9 is_stmt 1 view .LVU5
+  50              		.loc 1 67 21 is_stmt 0 view .LVU6
+  51 000e C0F3C124 		ubfx	r4, r0, #11, #2
+  52              		.loc 1 67 35 view .LVU7
+  53 0012 C0F30222 		ubfx	r2, r0, #8, #3
+  54              		.loc 1 67 47 view .LVU8
+  55 0016 C0F34213 		ubfx	r3, r0, #5, #3
+  56              		.loc 1 67 58 view .LVU9
+  57 001a 00F01F00 		and	r0, r0, #31
+  58              	.LVL1:
+  59              		.loc 1 67 78 view .LVU10
+  60 001e 02EBC402 		add	r2, r2, r4, lsl #3
+  61 0022 03EBC202 		add	r2, r3, r2, lsl #3
+  62 0026 0B4B     		ldr	r3, .L6
+  63 0028 03EB4213 		add	r3, r3, r2, lsl #5
+  64 002c 1954     		strb	r1, [r3, r0]
+  65              	.LVL2:
+  66              	.L1:
+  68:emulator/video/screen.c ****     }
+  69:emulator/video/screen.c ****     else if (addr >= SCREEN_ATTR_START && addr <= SCREEN_ATTR_END)
+  70:emulator/video/screen.c ****     {
+  71:emulator/video/screen.c ****         char_attribute[addr - SCREEN_ATTR_START].intr = data;
+  72:emulator/video/screen.c ****         // logger("ATTRIBUTE WR addr %04X data %02X\r\n", addr - SCREEN_ATTR_START, data);
+  73:emulator/video/screen.c ****     }
+  74:emulator/video/screen.c ****     else
+  75:emulator/video/screen.c ****     {
+  76:emulator/video/screen.c ****         logger("%s invalid addr %04X data %02X\r\n", __func__, addr, data);
+  77:emulator/video/screen.c ****     }
+  78:emulator/video/screen.c ****     
+  79:emulator/video/screen.c **** }
+  67              		.loc 1 79 1 view .LVU11
+  68 002e 10BD     		pop	{r4, pc}
+  69              	.LVL3:
+  70              	.L2:
+  69:emulator/video/screen.c ****     {
+  71              		.loc 1 69 10 is_stmt 1 view .LVU12
+  69:emulator/video/screen.c ****     {
+  72              		.loc 1 69 40 is_stmt 0 view .LVU13
+  73 0030 A0F5B043 		sub	r3, r0, #22528
+  74 0034 9BB2     		uxth	r3, r3
+  69:emulator/video/screen.c ****     {
+  75              		.loc 1 69 13 view .LVU14
+  76 0036 B3F5407F 		cmp	r3, #768
+  77 003a 04D2     		bcs	.L4
+  71:emulator/video/screen.c ****         // logger("ATTRIBUTE WR addr %04X data %02X\r\n", addr - SCREEN_ATTR_START, data);
+  78              		.loc 1 71 9 is_stmt 1 view .LVU15
+  71:emulator/video/screen.c ****         // logger("ATTRIBUTE WR addr %04X data %02X\r\n", addr - SCREEN_ATTR_START, data);
+  79              		.loc 1 71 29 is_stmt 0 view .LVU16
+  80 003c A0F5B040 		sub	r0, r0, #22528
+  81              	.LVL4:
+  71:emulator/video/screen.c ****         // logger("ATTRIBUTE WR addr %04X data %02X\r\n", addr - SCREEN_ATTR_START, data);
+  82              		.loc 1 71 55 view .LVU17
+  83 0040 054B     		ldr	r3, .L6+4
+ARM GAS  /tmp/cc3b9E7O.s 			page 4
+
+
+  84 0042 1954     		strb	r1, [r3, r0]
+  85 0044 F3E7     		b	.L1
+  86              	.LVL5:
+  87              	.L4:
+  76:emulator/video/screen.c ****     }
+  88              		.loc 1 76 9 is_stmt 1 view .LVU18
+  89 0046 0B46     		mov	r3, r1
+  90 0048 0246     		mov	r2, r0
+  91 004a 0449     		ldr	r1, .L6+8
+  92              	.LVL6:
+  76:emulator/video/screen.c ****     }
+  93              		.loc 1 76 9 is_stmt 0 view .LVU19
+  94 004c 0448     		ldr	r0, .L6+12
+  95              	.LVL7:
+  76:emulator/video/screen.c ****     }
+  96              		.loc 1 76 9 view .LVU20
+  97 004e FFF7FEFF 		bl	logger
+  98              	.LVL8:
+  99              		.loc 1 79 1 view .LVU21
+ 100 0052 ECE7     		b	.L1
+ 101              	.L7:
+ 102              		.align	2
+ 103              	.L6:
+ 104 0054 00000000 		.word	screen_area
+ 105 0058 00000000 		.word	.LANCHOR0
+ 106 005c 00000000 		.word	.LANCHOR1
+ 107 0060 00000000 		.word	.LC0
+ 108              		.cfi_endproc
+ 109              	.LFE0:
+ 111              		.section	.rodata.screen_mem_read.str1.4,"aMS",%progbits,1
+ 112              		.align	2
+ 113              	.LC1:
+ 114 0000 25732069 		.ascii	"%s invalid addr %04X\015\012\000"
+ 114      6E76616C 
+ 114      69642061 
+ 114      64647220 
+ 114      25303458 
+ 115              		.section	.text.screen_mem_read,"ax",%progbits
+ 116              		.align	1
+ 117              		.global	screen_mem_read
+ 118              		.syntax unified
+ 119              		.thumb
+ 120              		.thumb_func
+ 121              		.fpu softvfp
+ 123              	screen_mem_read:
+ 124              	.LVL9:
+ 125              	.LFB1:
+  80:emulator/video/screen.c **** 
+  81:emulator/video/screen.c **** uint8_t screen_mem_read(uint16_t addr)
+  82:emulator/video/screen.c **** {
+ 126              		.loc 1 82 1 is_stmt 1 view -0
+ 127              		.cfi_startproc
+ 128              		@ args = 0, pretend = 0, frame = 0
+ 129              		@ frame_needed = 0, uses_anonymous_args = 0
+ 130              		.loc 1 82 1 is_stmt 0 view .LVU23
+ 131 0000 08B5     		push	{r3, lr}
+ 132              	.LCFI1:
+ARM GAS  /tmp/cc3b9E7O.s 			page 5
+
+
+ 133              		.cfi_def_cfa_offset 8
+ 134              		.cfi_offset 3, -8
+ 135              		.cfi_offset 14, -4
+ 136 0002 0246     		mov	r2, r0
+  83:emulator/video/screen.c ****     if (addr >= SCREEN_AREA_START && addr <= SCREEN_AREA_END)
+ 137              		.loc 1 83 5 is_stmt 1 view .LVU24
+ 138              		.loc 1 83 35 is_stmt 0 view .LVU25
+ 139 0004 A0F58043 		sub	r3, r0, #16384
+ 140 0008 9BB2     		uxth	r3, r3
+ 141              		.loc 1 83 8 view .LVU26
+ 142 000a B3F5C05F 		cmp	r3, #6144
+ 143 000e 0AD3     		bcc	.L13
+  84:emulator/video/screen.c ****     {
+  85:emulator/video/screen.c ****         return screen_area[THIRDS(addr)][CHAR(addr)][ROW(addr)][BYTE_IN_LINE(addr)];
+  86:emulator/video/screen.c ****     }
+  87:emulator/video/screen.c ****     else if (addr >= SCREEN_ATTR_START && addr <= SCREEN_ATTR_END)
+ 144              		.loc 1 87 10 is_stmt 1 view .LVU27
+ 145              		.loc 1 87 40 is_stmt 0 view .LVU28
+ 146 0010 A0F5B043 		sub	r3, r0, #22528
+ 147 0014 9BB2     		uxth	r3, r3
+ 148              		.loc 1 87 13 view .LVU29
+ 149 0016 B3F5407F 		cmp	r3, #768
+ 150 001a 15D2     		bcs	.L11
+  88:emulator/video/screen.c ****     {
+  89:emulator/video/screen.c ****         // logger("ATTRIBUTE RD addr %04X data %02X\r\n", addr, char_attribute[addr - SCREEN_ATTR_S
+  90:emulator/video/screen.c ****         return char_attribute[addr - SCREEN_ATTR_START].intr;
+ 151              		.loc 1 90 9 is_stmt 1 view .LVU30
+ 152              		.loc 1 90 36 is_stmt 0 view .LVU31
+ 153 001c A0F5B042 		sub	r2, r0, #22528
+ 154              		.loc 1 90 56 view .LVU32
+ 155 0020 0C4B     		ldr	r3, .L14
+ 156 0022 985C     		ldrb	r0, [r3, r2]	@ zero_extendqisi2
+ 157              	.LVL10:
+ 158              		.loc 1 90 56 view .LVU33
+ 159 0024 0FE0     		b	.L10
+ 160              	.LVL11:
+ 161              	.L13:
+  85:emulator/video/screen.c ****     }
+ 162              		.loc 1 85 9 is_stmt 1 view .LVU34
+  85:emulator/video/screen.c ****     }
+ 163              		.loc 1 85 28 is_stmt 0 view .LVU35
+ 164 0026 C0F3C120 		ubfx	r0, r0, #11, #2
+ 165              	.LVL12:
+  85:emulator/video/screen.c ****     }
+ 166              		.loc 1 85 42 view .LVU36
+ 167 002a C2F30221 		ubfx	r1, r2, #8, #3
+  85:emulator/video/screen.c ****     }
+ 168              		.loc 1 85 54 view .LVU37
+ 169 002e C2F34213 		ubfx	r3, r2, #5, #3
+  85:emulator/video/screen.c ****     }
+ 170              		.loc 1 85 65 view .LVU38
+ 171 0032 02F01F02 		and	r2, r2, #31
+  85:emulator/video/screen.c ****     }
+ 172              		.loc 1 85 64 view .LVU39
+ 173 0036 01EBC001 		add	r1, r1, r0, lsl #3
+ 174 003a 03EBC101 		add	r1, r3, r1, lsl #3
+ 175 003e 064B     		ldr	r3, .L14+4
+ARM GAS  /tmp/cc3b9E7O.s 			page 6
+
+
+ 176 0040 03EB4113 		add	r3, r3, r1, lsl #5
+ 177 0044 985C     		ldrb	r0, [r3, r2]	@ zero_extendqisi2
+ 178              	.L10:
+  91:emulator/video/screen.c ****     }
+  92:emulator/video/screen.c ****     else
+  93:emulator/video/screen.c ****     {
+  94:emulator/video/screen.c ****         logger("%s invalid addr %04X\r\n", __func__, addr);
+  95:emulator/video/screen.c ****     }
+  96:emulator/video/screen.c **** 
+  97:emulator/video/screen.c ****     return 0;
+  98:emulator/video/screen.c **** }
+ 179              		.loc 1 98 1 view .LVU40
+ 180 0046 08BD     		pop	{r3, pc}
+ 181              	.LVL13:
+ 182              	.L11:
+  94:emulator/video/screen.c ****     }
+ 183              		.loc 1 94 9 is_stmt 1 view .LVU41
+ 184 0048 0449     		ldr	r1, .L14+8
+ 185 004a 0548     		ldr	r0, .L14+12
+ 186              	.LVL14:
+  94:emulator/video/screen.c ****     }
+ 187              		.loc 1 94 9 is_stmt 0 view .LVU42
+ 188 004c FFF7FEFF 		bl	logger
+ 189              	.LVL15:
+  97:emulator/video/screen.c **** }
+ 190              		.loc 1 97 5 is_stmt 1 view .LVU43
+  97:emulator/video/screen.c **** }
+ 191              		.loc 1 97 12 is_stmt 0 view .LVU44
+ 192 0050 0020     		movs	r0, #0
+ 193 0052 F8E7     		b	.L10
+ 194              	.L15:
+ 195              		.align	2
+ 196              	.L14:
+ 197 0054 00000000 		.word	.LANCHOR0
+ 198 0058 00000000 		.word	screen_area
+ 199 005c 00000000 		.word	.LANCHOR2
+ 200 0060 00000000 		.word	.LC1
+ 201              		.cfi_endproc
+ 202              	.LFE1:
+ 204              		.section	.text.screen_char_get,"ax",%progbits
+ 205              		.align	1
+ 206              		.global	screen_char_get
+ 207              		.syntax unified
+ 208              		.thumb
+ 209              		.thumb_func
+ 210              		.fpu softvfp
+ 212              	screen_char_get:
+ 213              	.LVL16:
+ 214              	.LFB2:
+  99:emulator/video/screen.c **** 
+ 100:emulator/video/screen.c **** void screen_char_get(uint8_t char_row, uint8_t char_clomn, uint8_t *bitmap, char_color_565_t *color
+ 101:emulator/video/screen.c **** {
+ 215              		.loc 1 101 1 is_stmt 1 view -0
+ 216              		.cfi_startproc
+ 217              		@ args = 0, pretend = 0, frame = 0
+ 218              		@ frame_needed = 0, uses_anonymous_args = 0
+ 219              		@ link register save eliminated.
+ARM GAS  /tmp/cc3b9E7O.s 			page 7
+
+
+ 220              		.loc 1 101 1 is_stmt 0 view .LVU46
+ 221 0000 F0B4     		push	{r4, r5, r6, r7}
+ 222              	.LCFI2:
+ 223              		.cfi_def_cfa_offset 16
+ 224              		.cfi_offset 4, -16
+ 225              		.cfi_offset 5, -12
+ 226              		.cfi_offset 6, -8
+ 227              		.cfi_offset 7, -4
+ 102:emulator/video/screen.c ****     uint8_t thirds = char_row / SCREEN_CHARS_ROW;
+ 228              		.loc 1 102 5 is_stmt 1 view .LVU47
+ 229              		.loc 1 102 13 is_stmt 0 view .LVU48
+ 230 0002 4FEAD00C 		lsr	ip, r0, #3
+ 231              	.LVL17:
+ 103:emulator/video/screen.c ****     uint8_t row    = char_row - (thirds * 8);
+ 232              		.loc 1 103 5 is_stmt 1 view .LVU49
+ 233 0006 00F00707 		and	r7, r0, #7
+ 234              	.LVL18:
+ 104:emulator/video/screen.c **** 
+ 105:emulator/video/screen.c ****     for (uint8_t i = 0; i < 8; i++)
+ 235              		.loc 1 105 5 view .LVU50
+ 236              	.LBB2:
+ 237              		.loc 1 105 10 view .LVU51
+ 238              		.loc 1 105 18 is_stmt 0 view .LVU52
+ 239 000a 0024     		movs	r4, #0
+ 240              		.loc 1 105 5 view .LVU53
+ 241 000c 0AE0     		b	.L17
+ 242              	.LVL19:
+ 243              	.L18:
+ 106:emulator/video/screen.c ****     {
+ 107:emulator/video/screen.c ****         bitmap[i] = screen_area[thirds][i][row][char_clomn];
+ 244              		.loc 1 107 9 is_stmt 1 discriminator 3 view .LVU54
+ 245              		.loc 1 107 48 is_stmt 0 discriminator 3 view .LVU55
+ 246 000e 04EBCC05 		add	r5, r4, ip, lsl #3
+ 247 0012 07EBC506 		add	r6, r7, r5, lsl #3
+ 248 0016 0D4D     		ldr	r5, .L20
+ 249 0018 05EB4615 		add	r5, r5, r6, lsl #5
+ 250 001c 6D5C     		ldrb	r5, [r5, r1]	@ zero_extendqisi2
+ 251              		.loc 1 107 19 discriminator 3 view .LVU56
+ 252 001e 1555     		strb	r5, [r2, r4]
+ 105:emulator/video/screen.c ****     {
+ 253              		.loc 1 105 32 is_stmt 1 discriminator 3 view .LVU57
+ 105:emulator/video/screen.c ****     {
+ 254              		.loc 1 105 33 is_stmt 0 discriminator 3 view .LVU58
+ 255 0020 0134     		adds	r4, r4, #1
+ 256              	.LVL20:
+ 105:emulator/video/screen.c ****     {
+ 257              		.loc 1 105 33 discriminator 3 view .LVU59
+ 258 0022 E4B2     		uxtb	r4, r4
+ 259              	.LVL21:
+ 260              	.L17:
+ 105:emulator/video/screen.c ****     {
+ 261              		.loc 1 105 25 is_stmt 1 discriminator 1 view .LVU60
+ 105:emulator/video/screen.c ****     {
+ 262              		.loc 1 105 5 is_stmt 0 discriminator 1 view .LVU61
+ 263 0024 072C     		cmp	r4, #7
+ 264 0026 F2D9     		bls	.L18
+ 265              	.LBE2:
+ARM GAS  /tmp/cc3b9E7O.s 			page 8
+
+
+ 108:emulator/video/screen.c ****     }
+ 109:emulator/video/screen.c ****     
+ 110:emulator/video/screen.c ****     uint16_t attribute_offset = (char_row * SCREEN_DISPLAY_ATTRIBUTES_W) + char_clomn;
+ 266              		.loc 1 110 5 is_stmt 1 view .LVU62
+ 267              		.loc 1 110 14 is_stmt 0 view .LVU63
+ 268 0028 01EB4011 		add	r1, r1, r0, lsl #5
+ 269              	.LVL22:
+ 111:emulator/video/screen.c ****     color->inc   = colors_565[char_attribute[attribute_offset].ink];
+ 270              		.loc 1 111 5 is_stmt 1 view .LVU64
+ 271              		.loc 1 111 63 is_stmt 0 view .LVU65
+ 272 002c 084C     		ldr	r4, .L20+4
+ 273              	.LVL23:
+ 274              		.loc 1 111 63 view .LVU66
+ 275 002e 625C     		ldrb	r2, [r4, r1]	@ zero_extendqisi2
+ 276              	.LVL24:
+ 277              		.loc 1 111 63 view .LVU67
+ 278 0030 02F00702 		and	r2, r2, #7
+ 279              		.loc 1 111 30 view .LVU68
+ 280 0034 0748     		ldr	r0, .L20+8
+ 281              	.LVL25:
+ 282              		.loc 1 111 30 view .LVU69
+ 283 0036 30F81220 		ldrh	r2, [r0, r2, lsl #1]
+ 284              		.loc 1 111 18 view .LVU70
+ 285 003a 1A80     		strh	r2, [r3]	@ movhi
+ 112:emulator/video/screen.c ****     color->paper = colors_565[char_attribute[attribute_offset].paper];
+ 286              		.loc 1 112 5 is_stmt 1 view .LVU71
+ 287              		.loc 1 112 63 is_stmt 0 view .LVU72
+ 288 003c 625C     		ldrb	r2, [r4, r1]	@ zero_extendqisi2
+ 289 003e C2F3C202 		ubfx	r2, r2, #3, #3
+ 290              		.loc 1 112 30 view .LVU73
+ 291 0042 30F81220 		ldrh	r2, [r0, r2, lsl #1]
+ 292              		.loc 1 112 18 view .LVU74
+ 293 0046 5A80     		strh	r2, [r3, #2]	@ movhi
+ 113:emulator/video/screen.c **** }
+ 294              		.loc 1 113 1 view .LVU75
+ 295 0048 F0BC     		pop	{r4, r5, r6, r7}
+ 296              	.LCFI3:
+ 297              		.cfi_restore 7
+ 298              		.cfi_restore 6
+ 299              		.cfi_restore 5
+ 300              		.cfi_restore 4
+ 301              		.cfi_def_cfa_offset 0
+ 302              	.LVL26:
+ 303              		.loc 1 113 1 view .LVU76
+ 304 004a 7047     		bx	lr
+ 305              	.L21:
+ 306              		.align	2
+ 307              	.L20:
+ 308 004c 00000000 		.word	screen_area
+ 309 0050 00000000 		.word	.LANCHOR0
+ 310 0054 00000000 		.word	.LANCHOR3
+ 311              		.cfi_endproc
+ 312              	.LFE2:
+ 314              		.section	.text.screen_draw,"ax",%progbits
+ 315              		.align	1
+ 316              		.global	screen_draw
+ 317              		.syntax unified
+ARM GAS  /tmp/cc3b9E7O.s 			page 9
+
+
+ 318              		.thumb
+ 319              		.thumb_func
+ 320              		.fpu softvfp
+ 322              	screen_draw:
+ 323              	.LFB3:
+ 114:emulator/video/screen.c **** 
+ 115:emulator/video/screen.c **** void screen_draw(void)
+ 116:emulator/video/screen.c **** {
+ 324              		.loc 1 116 1 is_stmt 1 view -0
+ 325              		.cfi_startproc
+ 326              		@ args = 0, pretend = 0, frame = 144
+ 327              		@ frame_needed = 0, uses_anonymous_args = 0
+ 328 0000 F0B5     		push	{r4, r5, r6, r7, lr}
+ 329              	.LCFI4:
+ 330              		.cfi_def_cfa_offset 20
+ 331              		.cfi_offset 4, -20
+ 332              		.cfi_offset 5, -16
+ 333              		.cfi_offset 6, -12
+ 334              		.cfi_offset 7, -8
+ 335              		.cfi_offset 14, -4
+ 336 0002 A5B0     		sub	sp, sp, #148
+ 337              	.LCFI5:
+ 338              		.cfi_def_cfa_offset 168
+ 117:emulator/video/screen.c ****     uint8_t bitmap[8];
+ 339              		.loc 1 117 5 view .LVU78
+ 118:emulator/video/screen.c ****     char_color_565_t color;
+ 340              		.loc 1 118 5 view .LVU79
+ 119:emulator/video/screen.c ****     
+ 120:emulator/video/screen.c ****     for (uint16_t y = 0; y < 24; ++y)
+ 341              		.loc 1 120 5 view .LVU80
+ 342              	.LBB3:
+ 343              		.loc 1 120 10 view .LVU81
+ 344              	.LVL27:
+ 345              		.loc 1 120 19 is_stmt 0 view .LVU82
+ 346 0004 0025     		movs	r5, #0
+ 347              		.loc 1 120 5 view .LVU83
+ 348 0006 39E0     		b	.L23
+ 349              	.LVL28:
+ 350              	.L25:
+ 351              	.LBB4:
+ 352              	.LBB5:
+ 353              	.LBB6:
+ 354              	.LBB7:
+ 121:emulator/video/screen.c ****     {
+ 122:emulator/video/screen.c ****         for (uint16_t x = 0; x < 32; ++x)
+ 123:emulator/video/screen.c ****         {
+ 124:emulator/video/screen.c ****             screen_char_get(y, x, bitmap, &color);
+ 125:emulator/video/screen.c **** 
+ 126:emulator/video/screen.c ****             uint16_t c[8][8];
+ 127:emulator/video/screen.c ****             for (uint8_t b = 0; b < 8; ++b)
+ 128:emulator/video/screen.c ****             {
+ 129:emulator/video/screen.c ****                 for (uint8_t n = 0; n < 8; ++n)
+ 130:emulator/video/screen.c ****                 {
+ 131:emulator/video/screen.c ****                     c[b][n] = (bitmap[b] & (1 << (7-n))) ? color.inc : color.paper; 
+ 355              		.loc 1 131 29 discriminator 2 view .LVU84
+ 356 0008 BDF88610 		ldrh	r1, [sp, #134]
+ 357              	.L26:
+ARM GAS  /tmp/cc3b9E7O.s 			page 10
+
+
+ 358              		.loc 1 131 29 discriminator 4 view .LVU85
+ 359 000c 02EBC602 		add	r2, r2, r6, lsl #3
+ 360 0010 24AE     		add	r6, sp, #144
+ 361 0012 06EB4202 		add	r2, r6, r2, lsl #1
+ 362 0016 22F88C1C 		strh	r1, [r2, #-140]	@ movhi
+ 129:emulator/video/screen.c ****                 {
+ 363              		.loc 1 129 44 is_stmt 1 discriminator 4 view .LVU86
+ 364 001a 0133     		adds	r3, r3, #1
+ 365              	.LVL29:
+ 129:emulator/video/screen.c ****                 {
+ 366              		.loc 1 129 44 is_stmt 0 discriminator 4 view .LVU87
+ 367 001c DBB2     		uxtb	r3, r3
+ 368              	.LVL30:
+ 369              	.L28:
+ 129:emulator/video/screen.c ****                 {
+ 370              		.loc 1 129 37 is_stmt 1 discriminator 2 view .LVU88
+ 129:emulator/video/screen.c ****                 {
+ 371              		.loc 1 129 17 is_stmt 0 discriminator 2 view .LVU89
+ 372 001e 072B     		cmp	r3, #7
+ 373 0020 0ED8     		bhi	.L34
+ 374              		.loc 1 131 21 is_stmt 1 view .LVU90
+ 375              		.loc 1 131 38 is_stmt 0 view .LVU91
+ 376 0022 0646     		mov	r6, r0
+ 377 0024 24AA     		add	r2, sp, #144
+ 378 0026 0244     		add	r2, r2, r0
+ 379 0028 12F8081C 		ldrb	r1, [r2, #-8]	@ zero_extendqisi2
+ 380              		.loc 1 131 52 view .LVU92
+ 381 002c 1A46     		mov	r2, r3
+ 382 002e C3F10707 		rsb	r7, r3, #7
+ 383              		.loc 1 131 58 view .LVU93
+ 384 0032 3941     		asrs	r1, r1, r7
+ 385              		.loc 1 131 29 view .LVU94
+ 386 0034 11F0010F 		tst	r1, #1
+ 387 0038 E6D0     		beq	.L25
+ 388              		.loc 1 131 29 discriminator 1 view .LVU95
+ 389 003a BDF88410 		ldrh	r1, [sp, #132]
+ 390 003e E5E7     		b	.L26
+ 391              	.L34:
+ 392              	.LBE7:
+ 127:emulator/video/screen.c ****             {
+ 393              		.loc 1 127 40 is_stmt 1 discriminator 2 view .LVU96
+ 394 0040 0130     		adds	r0, r0, #1
+ 395              	.LVL31:
+ 127:emulator/video/screen.c ****             {
+ 396              		.loc 1 127 40 is_stmt 0 discriminator 2 view .LVU97
+ 397 0042 C0B2     		uxtb	r0, r0
+ 398              	.LVL32:
+ 399              	.L24:
+ 127:emulator/video/screen.c ****             {
+ 400              		.loc 1 127 33 is_stmt 1 discriminator 1 view .LVU98
+ 127:emulator/video/screen.c ****             {
+ 401              		.loc 1 127 13 is_stmt 0 discriminator 1 view .LVU99
+ 402 0044 0728     		cmp	r0, #7
+ 403 0046 01D8     		bhi	.L35
+ 404              	.LBB8:
+ 129:emulator/video/screen.c ****                 {
+ 405              		.loc 1 129 30 view .LVU100
+ARM GAS  /tmp/cc3b9E7O.s 			page 11
+
+
+ 406 0048 0023     		movs	r3, #0
+ 407 004a E8E7     		b	.L28
+ 408              	.L35:
+ 409              	.LBE8:
+ 410              	.LBE6:
+ 132:emulator/video/screen.c ****                 }
+ 133:emulator/video/screen.c ****             } 
+ 134:emulator/video/screen.c **** 
+ 135:emulator/video/screen.c ****             ili9341_8x8block_draw(SCREEN_DISPLAY_ADDR_START_X + (x * 8),
+ 411              		.loc 1 135 13 is_stmt 1 discriminator 2 view .LVU101
+ 412 004c A91D     		adds	r1, r5, #6
+ 413 004e C900     		lsls	r1, r1, #3
+ 414 0050 89B2     		uxth	r1, r1
+ 415 0052 04F10800 		add	r0, r4, #8
+ 416              	.LVL33:
+ 417              		.loc 1 135 13 is_stmt 0 discriminator 2 view .LVU102
+ 418 0056 C000     		lsls	r0, r0, #3
+ 419 0058 80B2     		uxth	r0, r0
+ 420 005a 01AA     		add	r2, sp, #4
+ 421 005c FFF7FEFF 		bl	ili9341_8x8block_draw
+ 422              	.LVL34:
+ 423              	.LBE5:
+ 122:emulator/video/screen.c ****         {
+ 424              		.loc 1 122 38 is_stmt 1 discriminator 2 view .LVU103
+ 425 0060 0134     		adds	r4, r4, #1
+ 426              	.LVL35:
+ 122:emulator/video/screen.c ****         {
+ 427              		.loc 1 122 38 is_stmt 0 discriminator 2 view .LVU104
+ 428 0062 A4B2     		uxth	r4, r4
+ 429              	.LVL36:
+ 430              	.L30:
+ 122:emulator/video/screen.c ****         {
+ 431              		.loc 1 122 30 is_stmt 1 discriminator 1 view .LVU105
+ 122:emulator/video/screen.c ****         {
+ 432              		.loc 1 122 9 is_stmt 0 discriminator 1 view .LVU106
+ 433 0064 1F2C     		cmp	r4, #31
+ 434 0066 07D8     		bhi	.L36
+ 435              	.LBB10:
+ 124:emulator/video/screen.c **** 
+ 436              		.loc 1 124 13 is_stmt 1 view .LVU107
+ 437 0068 21AB     		add	r3, sp, #132
+ 438 006a 22AA     		add	r2, sp, #136
+ 439 006c E1B2     		uxtb	r1, r4
+ 440 006e E8B2     		uxtb	r0, r5
+ 441 0070 FFF7FEFF 		bl	screen_char_get
+ 442              	.LVL37:
+ 126:emulator/video/screen.c ****             for (uint8_t b = 0; b < 8; ++b)
+ 443              		.loc 1 126 13 view .LVU108
+ 127:emulator/video/screen.c ****             {
+ 444              		.loc 1 127 13 view .LVU109
+ 445              	.LBB9:
+ 127:emulator/video/screen.c ****             {
+ 446              		.loc 1 127 18 view .LVU110
+ 127:emulator/video/screen.c ****             {
+ 447              		.loc 1 127 26 is_stmt 0 view .LVU111
+ 448 0074 0020     		movs	r0, #0
+ 127:emulator/video/screen.c ****             {
+ARM GAS  /tmp/cc3b9E7O.s 			page 12
+
+
+ 449              		.loc 1 127 13 view .LVU112
+ 450 0076 E5E7     		b	.L24
+ 451              	.LVL38:
+ 452              	.L36:
+ 127:emulator/video/screen.c ****             {
+ 453              		.loc 1 127 13 view .LVU113
+ 454              	.LBE9:
+ 455              	.LBE10:
+ 456              	.LBE4:
+ 120:emulator/video/screen.c ****     {
+ 457              		.loc 1 120 34 is_stmt 1 discriminator 2 view .LVU114
+ 458 0078 0135     		adds	r5, r5, #1
+ 459              	.LVL39:
+ 120:emulator/video/screen.c ****     {
+ 460              		.loc 1 120 34 is_stmt 0 discriminator 2 view .LVU115
+ 461 007a ADB2     		uxth	r5, r5
+ 462              	.LVL40:
+ 463              	.L23:
+ 120:emulator/video/screen.c ****     {
+ 464              		.loc 1 120 26 is_stmt 1 discriminator 1 view .LVU116
+ 120:emulator/video/screen.c ****     {
+ 465              		.loc 1 120 5 is_stmt 0 discriminator 1 view .LVU117
+ 466 007c 172D     		cmp	r5, #23
+ 467 007e 01D8     		bhi	.L37
+ 468              	.LBB11:
+ 122:emulator/video/screen.c ****         {
+ 469              		.loc 1 122 23 view .LVU118
+ 470 0080 0024     		movs	r4, #0
+ 471 0082 EFE7     		b	.L30
+ 472              	.L37:
+ 473              	.LBE11:
+ 474              	.LBE3:
+ 136:emulator/video/screen.c ****                                 SCREEN_DISPLAY_ADDR_START_Y + (y * 8),
+ 137:emulator/video/screen.c ****                                 &c[0][0]);
+ 138:emulator/video/screen.c ****         }
+ 139:emulator/video/screen.c ****     }
+ 140:emulator/video/screen.c **** }
+ 475              		.loc 1 140 1 view .LVU119
+ 476 0084 25B0     		add	sp, sp, #148
+ 477              	.LCFI6:
+ 478              		.cfi_def_cfa_offset 20
+ 479              		@ sp needed
+ 480 0086 F0BD     		pop	{r4, r5, r6, r7, pc}
+ 481              		.loc 1 140 1 view .LVU120
+ 482              		.cfi_endproc
+ 483              	.LFE3:
+ 485              		.section	.rodata.screen_draw_border.str1.4,"aMS",%progbits,1
+ 486              		.align	2
+ 487              	.LC2:
+ 488 0000 626F7264 		.ascii	"border %04X\015\012\000"
+ 488      65722025 
+ 488      3034580D 
+ 488      0A00
+ 489              		.section	.text.screen_draw_border,"ax",%progbits
+ 490              		.align	1
+ 491              		.global	screen_draw_border
+ 492              		.syntax unified
+ARM GAS  /tmp/cc3b9E7O.s 			page 13
+
+
+ 493              		.thumb
+ 494              		.thumb_func
+ 495              		.fpu softvfp
+ 497              	screen_draw_border:
+ 498              	.LVL41:
+ 499              	.LFB4:
+ 141:emulator/video/screen.c **** 
+ 142:emulator/video/screen.c **** void screen_draw_border(uint8_t data)
+ 143:emulator/video/screen.c **** {
+ 500              		.loc 1 143 1 is_stmt 1 view -0
+ 501              		.cfi_startproc
+ 502              		@ args = 0, pretend = 0, frame = 0
+ 503              		@ frame_needed = 0, uses_anonymous_args = 0
+ 144:emulator/video/screen.c ****     char_attribute_t color = {.intr = data};
+ 504              		.loc 1 144 5 view .LVU122
+ 145:emulator/video/screen.c ****     if (border.ink != color.ink)
+ 505              		.loc 1 145 5 view .LVU123
+ 506              		.loc 1 145 20 is_stmt 0 view .LVU124
+ 507 0000 234B     		ldr	r3, .L45
+ 508 0002 1B78     		ldrb	r3, [r3]	@ zero_extendqisi2
+ 509 0004 4340     		eors	r3, r3, r0
+ 510              		.loc 1 145 8 view .LVU125
+ 511 0006 13F0070F 		tst	r3, #7
+ 512 000a 00D1     		bne	.L44
+ 513 000c 7047     		bx	lr
+ 514              	.L44:
+ 143:emulator/video/screen.c ****     char_attribute_t color = {.intr = data};
+ 515              		.loc 1 143 1 view .LVU126
+ 516 000e 30B5     		push	{r4, r5, lr}
+ 517              	.LCFI7:
+ 518              		.cfi_def_cfa_offset 12
+ 519              		.cfi_offset 4, -12
+ 520              		.cfi_offset 5, -8
+ 521              		.cfi_offset 14, -4
+ 522 0010 83B0     		sub	sp, sp, #12
+ 523              	.LCFI8:
+ 524              		.cfi_def_cfa_offset 24
+ 146:emulator/video/screen.c ****     {
+ 147:emulator/video/screen.c ****         border.intr = color.intr;
+ 525              		.loc 1 147 9 is_stmt 1 view .LVU127
+ 526              		.loc 1 147 21 is_stmt 0 view .LVU128
+ 527 0012 1F4D     		ldr	r5, .L45
+ 528 0014 2870     		strb	r0, [r5]
+ 148:emulator/video/screen.c ****         logger("border %04X\r\n", colors_565[border.ink]);
+ 529              		.loc 1 148 9 is_stmt 1 view .LVU129
+ 530              		.loc 1 148 52 is_stmt 0 view .LVU130
+ 531 0016 00F00700 		and	r0, r0, #7
+ 532              	.LVL42:
+ 533              		.loc 1 148 45 view .LVU131
+ 534 001a 1E4C     		ldr	r4, .L45+4
+ 535              		.loc 1 148 9 view .LVU132
+ 536 001c 34F81010 		ldrh	r1, [r4, r0, lsl #1]
+ 537 0020 1D48     		ldr	r0, .L45+8
+ 538 0022 FFF7FEFF 		bl	logger
+ 539              	.LVL43:
+ 149:emulator/video/screen.c ****         ili9341_fill_rect(24, 272, 20, 4, colors_565[border.ink]);
+ 540              		.loc 1 149 9 is_stmt 1 view .LVU133
+ARM GAS  /tmp/cc3b9E7O.s 			page 14
+
+
+ 541              		.loc 1 149 60 is_stmt 0 view .LVU134
+ 542 0026 2B78     		ldrb	r3, [r5]	@ zero_extendqisi2
+ 543 0028 03F00703 		and	r3, r3, #7
+ 544              		.loc 1 149 9 view .LVU135
+ 545 002c 34F81330 		ldrh	r3, [r4, r3, lsl #1]
+ 546 0030 0093     		str	r3, [sp]
+ 547 0032 0423     		movs	r3, #4
+ 548 0034 1422     		movs	r2, #20
+ 549 0036 4FF48871 		mov	r1, #272
+ 550 003a 1820     		movs	r0, #24
+ 551 003c FFF7FEFF 		bl	ili9341_fill_rect
+ 552              	.LVL44:
+ 150:emulator/video/screen.c **** 
+ 151:emulator/video/screen.c ****         ili9341_fill_rect(24,
+ 553              		.loc 1 151 9 is_stmt 1 view .LVU136
+ 152:emulator/video/screen.c ****                           8,
+ 153:emulator/video/screen.c ****                           SCREEN_DISPLAY_ADDR_START_Y,
+ 154:emulator/video/screen.c ****                           SCREEN_DISPLAY_H,
+ 155:emulator/video/screen.c ****                           colors_565[border.ink]);
+ 554              		.loc 1 155 44 is_stmt 0 view .LVU137
+ 555 0040 2B78     		ldrb	r3, [r5]	@ zero_extendqisi2
+ 556 0042 03F00703 		and	r3, r3, #7
+ 151:emulator/video/screen.c ****                           8,
+ 557              		.loc 1 151 9 view .LVU138
+ 558 0046 34F81330 		ldrh	r3, [r4, r3, lsl #1]
+ 559 004a 0093     		str	r3, [sp]
+ 560 004c C023     		movs	r3, #192
+ 561 004e 3022     		movs	r2, #48
+ 562 0050 0821     		movs	r1, #8
+ 563 0052 1820     		movs	r0, #24
+ 564 0054 FFF7FEFF 		bl	ili9341_fill_rect
+ 565              	.LVL45:
+ 156:emulator/video/screen.c **** 
+ 157:emulator/video/screen.c ****         ili9341_fill_rect(24, 272, 216, 4, colors_565[border.ink]);
+ 566              		.loc 1 157 9 is_stmt 1 view .LVU139
+ 567              		.loc 1 157 61 is_stmt 0 view .LVU140
+ 568 0058 2B78     		ldrb	r3, [r5]	@ zero_extendqisi2
+ 569 005a 03F00703 		and	r3, r3, #7
+ 570              		.loc 1 157 9 view .LVU141
+ 571 005e 34F81330 		ldrh	r3, [r4, r3, lsl #1]
+ 572 0062 0093     		str	r3, [sp]
+ 573 0064 0423     		movs	r3, #4
+ 574 0066 D822     		movs	r2, #216
+ 575 0068 4FF48871 		mov	r1, #272
+ 576 006c 1820     		movs	r0, #24
+ 577 006e FFF7FEFF 		bl	ili9341_fill_rect
+ 578              	.LVL46:
+ 158:emulator/video/screen.c **** 
+ 159:emulator/video/screen.c ****         ili9341_fill_rect(288,
+ 579              		.loc 1 159 9 is_stmt 1 view .LVU142
+ 160:emulator/video/screen.c ****                           8,
+ 161:emulator/video/screen.c ****                           SCREEN_DISPLAY_ADDR_START_Y,
+ 162:emulator/video/screen.c ****                           SCREEN_DISPLAY_H,
+ 163:emulator/video/screen.c ****                           colors_565[border.ink]);
+ 580              		.loc 1 163 44 is_stmt 0 view .LVU143
+ 581 0072 2B78     		ldrb	r3, [r5]	@ zero_extendqisi2
+ 582 0074 03F00703 		and	r3, r3, #7
+ARM GAS  /tmp/cc3b9E7O.s 			page 15
+
+
+ 159:emulator/video/screen.c ****                           8,
+ 583              		.loc 1 159 9 view .LVU144
+ 584 0078 34F81330 		ldrh	r3, [r4, r3, lsl #1]
+ 585 007c 0093     		str	r3, [sp]
+ 586 007e C023     		movs	r3, #192
+ 587 0080 3022     		movs	r2, #48
+ 588 0082 0821     		movs	r1, #8
+ 589 0084 4FF49070 		mov	r0, #288
+ 590 0088 FFF7FEFF 		bl	ili9341_fill_rect
+ 591              	.LVL47:
+ 164:emulator/video/screen.c ****     }
+ 165:emulator/video/screen.c **** }...
+ 592              		.loc 1 165 1 view .LVU145
+ 593 008c 03B0     		add	sp, sp, #12
+ 594              	.LCFI9:
+ 595              		.cfi_def_cfa_offset 12
+ 596              		@ sp needed
+ 597 008e 30BD     		pop	{r4, r5, pc}
+ 598              	.L46:
+ 599              		.align	2
+ 600              	.L45:
+ 601 0090 00000000 		.word	.LANCHOR4
+ 602 0094 00000000 		.word	.LANCHOR3
+ 603 0098 00000000 		.word	.LC2
+ 604              		.cfi_endproc
+ 605              	.LFE4:
+ 607              		.section	.bss.border,"aw",%nobits
+ 608              		.align	2
+ 609              		.set	.LANCHOR4,. + 0
+ 612              	border:
+ 613 0000 00       		.space	1
+ 614              		.section	.bss.char_attribute,"aw",%nobits
+ 615              		.align	2
+ 616              		.set	.LANCHOR0,. + 0
+ 619              	char_attribute:
+ 620 0000 00000000 		.space	768
+ 620      00000000 
+ 620      00000000 
+ 620      00000000 
+ 620      00000000 
+ 621              		.section	.bss.screen_area,"aw",%nobits
+ 622              		.align	2
+ 625              	screen_area:
+ 626 0000 00000000 		.space	6144
+ 626      00000000 
+ 626      00000000 
+ 626      00000000 
+ 626      00000000 
+ 627              		.section	.rodata.__func__.4271,"a"
+ 628              		.align	2
+ 629              		.set	.LANCHOR1,. + 0
+ 632              	__func__.4271:
+ 633 0000 73637265 		.ascii	"screen_mem_write\000"
+ 633      656E5F6D 
+ 633      656D5F77 
+ 633      72697465 
+ 633      00
+ARM GAS  /tmp/cc3b9E7O.s 			page 16
+
+
+ 634              		.section	.rodata.__func__.4275,"a"
+ 635              		.align	2
+ 636              		.set	.LANCHOR2,. + 0
+ 639              	__func__.4275:
+ 640 0000 73637265 		.ascii	"screen_mem_read\000"
+ 640      656E5F6D 
+ 640      656D5F72 
+ 640      65616400 
+ 641              		.section	.rodata.colors_565,"a"
+ 642              		.align	2
+ 643              		.set	.LANCHOR3,. + 0
+ 646              	colors_565:
+ 647 0000 0000     		.short	0
+ 648 0002 1A00     		.short	26
+ 649 0004 00D0     		.short	-12288
+ 650 0006 1AD0     		.short	-12262
+ 651 0008 A006     		.short	1696
+ 652 000a BA06     		.short	1722
+ 653 000c A0D6     		.short	-10592
+ 654 000e BAD6     		.short	-10566
+ 655 0010 0000     		.short	0
+ 656 0012 1F00     		.short	31
+ 657 0014 00F8     		.short	-2048
+ 658 0016 1FF8     		.short	-2017
+ 659 0018 E007     		.short	2016
+ 660 001a FF07     		.short	2047
+ 661 001c E0FF     		.short	-32
+ 662 001e FFFF     		.short	-1
+ 663              		.text
+ 664              	.Letext0:
+ 665              		.file 2 "/usr/lib/gcc/arm-none-eabi/9.2.1/include/stdint.h"
+ 666              		.file 3 "emulator/video/screen.h"
+ 667              		.file 4 "logger/logger.h"
+ 668              		.file 5 "ili9341/ili9341.h"
+ARM GAS  /tmp/cc3b9E7O.s 			page 17
+
+
+DEFINED SYMBOLS
+                            *ABS*:0000000000000000 screen.c
+     /tmp/cc3b9E7O.s:16     .rodata.screen_mem_write.str1.4:0000000000000000 $d
+     /tmp/cc3b9E7O.s:20     .text.screen_mem_write:0000000000000000 $t
+     /tmp/cc3b9E7O.s:28     .text.screen_mem_write:0000000000000000 screen_mem_write
+     /tmp/cc3b9E7O.s:104    .text.screen_mem_write:0000000000000054 $d
+     /tmp/cc3b9E7O.s:625    .bss.screen_area:0000000000000000 screen_area
+     /tmp/cc3b9E7O.s:112    .rodata.screen_mem_read.str1.4:0000000000000000 $d
+     /tmp/cc3b9E7O.s:116    .text.screen_mem_read:0000000000000000 $t
+     /tmp/cc3b9E7O.s:123    .text.screen_mem_read:0000000000000000 screen_mem_read
+     /tmp/cc3b9E7O.s:197    .text.screen_mem_read:0000000000000054 $d
+     /tmp/cc3b9E7O.s:205    .text.screen_char_get:0000000000000000 $t
+     /tmp/cc3b9E7O.s:212    .text.screen_char_get:0000000000000000 screen_char_get
+     /tmp/cc3b9E7O.s:308    .text.screen_char_get:000000000000004c $d
+     /tmp/cc3b9E7O.s:315    .text.screen_draw:0000000000000000 $t
+     /tmp/cc3b9E7O.s:322    .text.screen_draw:0000000000000000 screen_draw
+     /tmp/cc3b9E7O.s:486    .rodata.screen_draw_border.str1.4:0000000000000000 $d
+     /tmp/cc3b9E7O.s:490    .text.screen_draw_border:0000000000000000 $t
+     /tmp/cc3b9E7O.s:497    .text.screen_draw_border:0000000000000000 screen_draw_border
+     /tmp/cc3b9E7O.s:601    .text.screen_draw_border:0000000000000090 $d
+     /tmp/cc3b9E7O.s:608    .bss.border:0000000000000000 $d
+     /tmp/cc3b9E7O.s:612    .bss.border:0000000000000000 border
+     /tmp/cc3b9E7O.s:615    .bss.char_attribute:0000000000000000 $d
+     /tmp/cc3b9E7O.s:619    .bss.char_attribute:0000000000000000 char_attribute
+     /tmp/cc3b9E7O.s:622    .bss.screen_area:0000000000000000 $d
+     /tmp/cc3b9E7O.s:628    .rodata.__func__.4271:0000000000000000 $d
+     /tmp/cc3b9E7O.s:632    .rodata.__func__.4271:0000000000000000 __func__.4271
+     /tmp/cc3b9E7O.s:635    .rodata.__func__.4275:0000000000000000 $d
+     /tmp/cc3b9E7O.s:639    .rodata.__func__.4275:0000000000000000 __func__.4275
+     /tmp/cc3b9E7O.s:642    .rodata.colors_565:0000000000000000 $d
+     /tmp/cc3b9E7O.s:646    .rodata.colors_565:0000000000000000 colors_565
+
+UNDEFINED SYMBOLS
+logger
+ili9341_8x8block_draw
+ili9341_fill_rect

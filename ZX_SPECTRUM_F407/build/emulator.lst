@@ -1,0 +1,368 @@
+ARM GAS  /tmp/cck1aWTY.s 			page 1
+
+
+   1              		.cpu cortex-m4
+   2              		.eabi_attribute 27, 1
+   3              		.eabi_attribute 28, 1
+   4              		.eabi_attribute 20, 1
+   5              		.eabi_attribute 21, 1
+   6              		.eabi_attribute 23, 3
+   7              		.eabi_attribute 24, 1
+   8              		.eabi_attribute 25, 1
+   9              		.eabi_attribute 26, 1
+  10              		.eabi_attribute 30, 1
+  11              		.eabi_attribute 34, 1
+  12              		.eabi_attribute 18, 4
+  13              		.file	"emulator.c"
+  14              		.text
+  15              	.Ltext0:
+  16              		.cfi_sections	.debug_frame
+  17              		.section	.text.emulator_init,"ax",%progbits
+  18              		.align	1
+  19              		.global	emulator_init
+  20              		.arch armv7e-m
+  21              		.syntax unified
+  22              		.thumb
+  23              		.thumb_func
+  24              		.fpu fpv4-sp-d16
+  26              	emulator_init:
+  27              	.LFB126:
+  28              		.file 1 "emulator/emulator.c"
+   1:emulator/emulator.c **** #include "stm32f4xx_hal.h"
+   2:emulator/emulator.c **** 
+   3:emulator/emulator.c **** #include "emulator.h"
+   4:emulator/emulator.c **** #include "mem.h"
+   5:emulator/emulator.c **** #include "display.h"
+   6:emulator/emulator.c **** #include "input.h"
+   7:emulator/emulator.c **** #include "screen.h"
+   8:emulator/emulator.c **** #include "logger.h"
+   9:emulator/emulator.c **** #include "keyboard.h"
+  10:emulator/emulator.c **** 
+  11:emulator/emulator.c **** // #define CYCLES_PER_STEP     (69888)
+  12:emulator/emulator.c **** #define CYCLES_PER_STEP     (70908)
+  13:emulator/emulator.c **** 
+  14:emulator/emulator.c **** static Z80_STATE zx_cpu;
+  15:emulator/emulator.c **** static CONTEXT zx_context;
+  16:emulator/emulator.c **** static int next_total;
+  17:emulator/emulator.c **** static int total;
+  18:emulator/emulator.c **** static uint32_t ticks;
+  19:emulator/emulator.c **** 
+  20:emulator/emulator.c **** void emulator_init(void)
+  21:emulator/emulator.c **** {
+  29              		.loc 1 21 1 view -0
+  30              		.cfi_startproc
+  31              		@ args = 0, pretend = 0, frame = 0
+  32              		@ frame_needed = 0, uses_anonymous_args = 0
+  33 0000 08B5     		push	{r3, lr}
+  34              	.LCFI0:
+  35              		.cfi_def_cfa_offset 8
+  36              		.cfi_offset 3, -8
+  37              		.cfi_offset 14, -4
+ARM GAS  /tmp/cck1aWTY.s 			page 2
+
+
+  22:emulator/emulator.c ****     display_init();
+  38              		.loc 1 22 5 view .LVU1
+  39 0002 FFF7FEFF 		bl	display_init
+  40              	.LVL0:
+  23:emulator/emulator.c ****     input_key_init();
+  41              		.loc 1 23 5 view .LVU2
+  42 0006 FFF7FEFF 		bl	input_key_init
+  43              	.LVL1:
+  24:emulator/emulator.c **** 
+  25:emulator/emulator.c ****     zx_context.readbyte  = mem_readbyte;
+  44              		.loc 1 25 5 view .LVU3
+  45              		.loc 1 25 26 is_stmt 0 view .LVU4
+  46 000a 084B     		ldr	r3, .L3
+  47 000c 084A     		ldr	r2, .L3+4
+  48 000e 1A60     		str	r2, [r3]
+  26:emulator/emulator.c ****     zx_context.readword  = mem_readword;
+  49              		.loc 1 26 5 is_stmt 1 view .LVU5
+  50              		.loc 1 26 26 is_stmt 0 view .LVU6
+  51 0010 084A     		ldr	r2, .L3+8
+  52 0012 5A60     		str	r2, [r3, #4]
+  27:emulator/emulator.c ****     zx_context.writebyte = mem_writebyte;
+  53              		.loc 1 27 5 is_stmt 1 view .LVU7
+  54              		.loc 1 27 26 is_stmt 0 view .LVU8
+  55 0014 084A     		ldr	r2, .L3+12
+  56 0016 9A60     		str	r2, [r3, #8]
+  28:emulator/emulator.c ****     zx_context.writeword = mem_writeword;
+  57              		.loc 1 28 5 is_stmt 1 view .LVU9
+  58              		.loc 1 28 26 is_stmt 0 view .LVU10
+  59 0018 084A     		ldr	r2, .L3+16
+  60 001a DA60     		str	r2, [r3, #12]
+  29:emulator/emulator.c ****     zx_context.input     = mem_input;
+  61              		.loc 1 29 5 is_stmt 1 view .LVU11
+  62              		.loc 1 29 26 is_stmt 0 view .LVU12
+  63 001c 084A     		ldr	r2, .L3+20
+  64 001e 1A61     		str	r2, [r3, #16]
+  30:emulator/emulator.c ****     zx_context.output    = mem_output;
+  65              		.loc 1 30 5 is_stmt 1 view .LVU13
+  66              		.loc 1 30 26 is_stmt 0 view .LVU14
+  67 0020 084A     		ldr	r2, .L3+24
+  68 0022 5A61     		str	r2, [r3, #20]
+  31:emulator/emulator.c **** 
+  32:emulator/emulator.c ****     Z80Reset(&zx_cpu);
+  69              		.loc 1 32 5 is_stmt 1 view .LVU15
+  70 0024 0848     		ldr	r0, .L3+28
+  71 0026 FFF7FEFF 		bl	Z80Reset
+  72              	.LVL2:
+  33:emulator/emulator.c **** }
+  73              		.loc 1 33 1 is_stmt 0 view .LVU16
+  74 002a 08BD     		pop	{r3, pc}
+  75              	.L4:
+  76              		.align	2
+  77              	.L3:
+  78 002c 00000000 		.word	.LANCHOR0
+  79 0030 00000000 		.word	mem_readbyte
+  80 0034 00000000 		.word	mem_readword
+  81 0038 00000000 		.word	mem_writebyte
+  82 003c 00000000 		.word	mem_writeword
+ARM GAS  /tmp/cck1aWTY.s 			page 3
+
+
+  83 0040 00000000 		.word	mem_input
+  84 0044 00000000 		.word	mem_output
+  85 0048 00000000 		.word	.LANCHOR1
+  86              		.cfi_endproc
+  87              	.LFE126:
+  89              		.section	.text.emulator_loop,"ax",%progbits
+  90              		.align	1
+  91              		.global	emulator_loop
+  92              		.syntax unified
+  93              		.thumb
+  94              		.thumb_func
+  95              		.fpu fpv4-sp-d16
+  97              	emulator_loop:
+  98              	.LFB127:
+  34:emulator/emulator.c **** 
+  35:emulator/emulator.c **** void emulator_loop(void)
+  36:emulator/emulator.c **** {
+  99              		.loc 1 36 1 is_stmt 1 view -0
+ 100              		.cfi_startproc
+ 101              		@ args = 0, pretend = 0, frame = 0
+ 102              		@ frame_needed = 0, uses_anonymous_args = 0
+ 103 0000 38B5     		push	{r3, r4, r5, lr}
+ 104              	.LCFI1:
+ 105              		.cfi_def_cfa_offset 16
+ 106              		.cfi_offset 3, -16
+ 107              		.cfi_offset 4, -12
+ 108              		.cfi_offset 5, -8
+ 109              		.cfi_offset 14, -4
+  37:emulator/emulator.c ****     total += Z80Emulate(&zx_cpu, next_total - total, &zx_context);
+ 110              		.loc 1 37 5 view .LVU18
+ 111              		.loc 1 37 14 is_stmt 0 view .LVU19
+ 112 0002 144D     		ldr	r5, .L11
+ 113 0004 144C     		ldr	r4, .L11+4
+ 114 0006 2968     		ldr	r1, [r5]
+ 115 0008 2368     		ldr	r3, [r4]
+ 116 000a 144A     		ldr	r2, .L11+8
+ 117 000c C91A     		subs	r1, r1, r3
+ 118 000e 1448     		ldr	r0, .L11+12
+ 119 0010 FFF7FEFF 		bl	Z80Emulate
+ 120              	.LVL3:
+ 121              		.loc 1 37 11 view .LVU20
+ 122 0014 2368     		ldr	r3, [r4]
+ 123 0016 1844     		add	r0, r0, r3
+ 124 0018 2060     		str	r0, [r4]
+  38:emulator/emulator.c ****     if (total >= next_total)
+ 125              		.loc 1 38 5 is_stmt 1 view .LVU21
+ 126              		.loc 1 38 15 is_stmt 0 view .LVU22
+ 127 001a 2B68     		ldr	r3, [r5]
+ 128              		.loc 1 38 8 view .LVU23
+ 129 001c 9842     		cmp	r0, r3
+ 130 001e 07DA     		bge	.L9
+ 131              	.L6:
+  39:emulator/emulator.c ****     {
+  40:emulator/emulator.c ****         next_total += CYCLES_PER_STEP;
+  41:emulator/emulator.c ****         Z80Interrupt(&zx_cpu, 0xff, &zx_context);
+  42:emulator/emulator.c ****     }
+  43:emulator/emulator.c ****     
+ARM GAS  /tmp/cck1aWTY.s 			page 4
+
+
+  44:emulator/emulator.c ****     if ((HAL_GetTick() - ticks) >= 20)
+ 132              		.loc 1 44 5 is_stmt 1 view .LVU24
+ 133              		.loc 1 44 10 is_stmt 0 view .LVU25
+ 134 0020 FFF7FEFF 		bl	HAL_GetTick
+ 135              	.LVL4:
+ 136              		.loc 1 44 24 view .LVU26
+ 137 0024 0F4B     		ldr	r3, .L11+16
+ 138 0026 1B68     		ldr	r3, [r3]
+ 139 0028 C01A     		subs	r0, r0, r3
+ 140              		.loc 1 44 8 view .LVU27
+ 141 002a 1328     		cmp	r0, #19
+ 142 002c 0AD8     		bhi	.L10
+ 143              	.L5:
+  45:emulator/emulator.c ****     {
+  46:emulator/emulator.c ****         screen_draw();
+  47:emulator/emulator.c ****         ticks = HAL_GetTick();
+  48:emulator/emulator.c ****     }
+  49:emulator/emulator.c **** }
+ 144              		.loc 1 49 1 view .LVU28
+ 145 002e 38BD     		pop	{r3, r4, r5, pc}
+ 146              	.L9:
+  40:emulator/emulator.c ****         Z80Interrupt(&zx_cpu, 0xff, &zx_context);
+ 147              		.loc 1 40 9 is_stmt 1 view .LVU29
+  40:emulator/emulator.c ****         Z80Interrupt(&zx_cpu, 0xff, &zx_context);
+ 148              		.loc 1 40 20 is_stmt 0 view .LVU30
+ 149 0030 03F58A33 		add	r3, r3, #70656
+ 150 0034 FC33     		adds	r3, r3, #252
+ 151 0036 2B60     		str	r3, [r5]
+  41:emulator/emulator.c ****     }
+ 152              		.loc 1 41 9 is_stmt 1 view .LVU31
+ 153 0038 084A     		ldr	r2, .L11+8
+ 154 003a FF21     		movs	r1, #255
+ 155 003c 0848     		ldr	r0, .L11+12
+ 156 003e FFF7FEFF 		bl	Z80Interrupt
+ 157              	.LVL5:
+ 158 0042 EDE7     		b	.L6
+ 159              	.L10:
+  46:emulator/emulator.c ****         ticks = HAL_GetTick();
+ 160              		.loc 1 46 9 view .LVU32
+ 161 0044 FFF7FEFF 		bl	screen_draw
+ 162              	.LVL6:
+  47:emulator/emulator.c ****     }
+ 163              		.loc 1 47 9 view .LVU33
+  47:emulator/emulator.c ****     }
+ 164              		.loc 1 47 17 is_stmt 0 view .LVU34
+ 165 0048 FFF7FEFF 		bl	HAL_GetTick
+ 166              	.LVL7:
+  47:emulator/emulator.c ****     }
+ 167              		.loc 1 47 15 view .LVU35
+ 168 004c 054B     		ldr	r3, .L11+16
+ 169 004e 1860     		str	r0, [r3]
+ 170              		.loc 1 49 1 view .LVU36
+ 171 0050 EDE7     		b	.L5
+ 172              	.L12:
+ 173 0052 00BF     		.align	2
+ 174              	.L11:
+ 175 0054 00000000 		.word	.LANCHOR2
+ARM GAS  /tmp/cck1aWTY.s 			page 5
+
+
+ 176 0058 00000000 		.word	.LANCHOR3
+ 177 005c 00000000 		.word	.LANCHOR0
+ 178 0060 00000000 		.word	.LANCHOR1
+ 179 0064 00000000 		.word	.LANCHOR4
+ 180              		.cfi_endproc
+ 181              	.LFE127:
+ 183              		.section	.text.emulator_cpu_state_get,"ax",%progbits
+ 184              		.align	1
+ 185              		.global	emulator_cpu_state_get
+ 186              		.syntax unified
+ 187              		.thumb
+ 188              		.thumb_func
+ 189              		.fpu fpv4-sp-d16
+ 191              	emulator_cpu_state_get:
+ 192              	.LFB128:
+  50:emulator/emulator.c **** 
+  51:emulator/emulator.c **** Z80_STATE* emulator_cpu_state_get(void)
+  52:emulator/emulator.c **** {
+ 193              		.loc 1 52 1 is_stmt 1 view -0
+ 194              		.cfi_startproc
+ 195              		@ args = 0, pretend = 0, frame = 0
+ 196              		@ frame_needed = 0, uses_anonymous_args = 0
+ 197              		@ link register save eliminated.
+  53:emulator/emulator.c ****     return &zx_cpu;
+ 198              		.loc 1 53 5 view .LVU38
+  54:emulator/emulator.c **** }...
+ 199              		.loc 1 54 1 is_stmt 0 view .LVU39
+ 200 0000 0048     		ldr	r0, .L14
+ 201 0002 7047     		bx	lr
+ 202              	.L15:
+ 203              		.align	2
+ 204              	.L14:
+ 205 0004 00000000 		.word	.LANCHOR1
+ 206              		.cfi_endproc
+ 207              	.LFE128:
+ 209              		.section	.bss.next_total,"aw",%nobits
+ 210              		.align	2
+ 211              		.set	.LANCHOR2,. + 0
+ 214              	next_total:
+ 215 0000 00000000 		.space	4
+ 216              		.section	.bss.ticks,"aw",%nobits
+ 217              		.align	2
+ 218              		.set	.LANCHOR4,. + 0
+ 221              	ticks:
+ 222 0000 00000000 		.space	4
+ 223              		.section	.bss.total,"aw",%nobits
+ 224              		.align	2
+ 225              		.set	.LANCHOR3,. + 0
+ 228              	total:
+ 229 0000 00000000 		.space	4
+ 230              		.section	.bss.zx_context,"aw",%nobits
+ 231              		.align	2
+ 232              		.set	.LANCHOR0,. + 0
+ 235              	zx_context:
+ 236 0000 00000000 		.space	24
+ 236      00000000 
+ 236      00000000 
+ARM GAS  /tmp/cck1aWTY.s 			page 6
+
+
+ 236      00000000 
+ 236      00000000 
+ 237              		.section	.bss.zx_cpu,"aw",%nobits
+ 238              		.align	2
+ 239              		.set	.LANCHOR1,. + 0
+ 242              	zx_cpu:
+ 243 0000 00000000 		.space	244
+ 243      00000000 
+ 243      00000000 
+ 243      00000000 
+ 243      00000000 
+ 244              		.text
+ 245              	.Letext0:
+ 246              		.file 2 "/usr/lib/gcc/arm-none-eabi/9.2.1/include/stdint.h"
+ 247              		.file 3 "Drivers/CMSIS/Include/core_cm4.h"
+ 248              		.file 4 "Drivers/CMSIS/Device/ST/STM32F4xx/Include/system_stm32f4xx.h"
+ 249              		.file 5 "/usr/lib/gcc/arm-none-eabi/9.2.1/include/stddef.h"
+ 250              		.file 6 "/usr/include/newlib/sys/_types.h"
+ 251              		.file 7 "/usr/include/newlib/sys/reent.h"
+ 252              		.file 8 "/usr/include/newlib/sys/lock.h"
+ 253              		.file 9 "emulator/z80emu/z80emu.h"
+ 254              		.file 10 "emulator/z80api.h"
+ 255              		.file 11 "Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal.h"
+ 256              		.file 12 "emulator/video/screen.h"
+ 257              		.file 13 "display/display.h"
+ 258              		.file 14 "emulator/input/input.h"
+ARM GAS  /tmp/cck1aWTY.s 			page 7
+
+
+DEFINED SYMBOLS
+                            *ABS*:0000000000000000 emulator.c
+     /tmp/cck1aWTY.s:18     .text.emulator_init:0000000000000000 $t
+     /tmp/cck1aWTY.s:26     .text.emulator_init:0000000000000000 emulator_init
+     /tmp/cck1aWTY.s:78     .text.emulator_init:000000000000002c $d
+     /tmp/cck1aWTY.s:90     .text.emulator_loop:0000000000000000 $t
+     /tmp/cck1aWTY.s:97     .text.emulator_loop:0000000000000000 emulator_loop
+     /tmp/cck1aWTY.s:175    .text.emulator_loop:0000000000000054 $d
+     /tmp/cck1aWTY.s:184    .text.emulator_cpu_state_get:0000000000000000 $t
+     /tmp/cck1aWTY.s:191    .text.emulator_cpu_state_get:0000000000000000 emulator_cpu_state_get
+     /tmp/cck1aWTY.s:205    .text.emulator_cpu_state_get:0000000000000004 $d
+     /tmp/cck1aWTY.s:210    .bss.next_total:0000000000000000 $d
+     /tmp/cck1aWTY.s:214    .bss.next_total:0000000000000000 next_total
+     /tmp/cck1aWTY.s:217    .bss.ticks:0000000000000000 $d
+     /tmp/cck1aWTY.s:221    .bss.ticks:0000000000000000 ticks
+     /tmp/cck1aWTY.s:224    .bss.total:0000000000000000 $d
+     /tmp/cck1aWTY.s:228    .bss.total:0000000000000000 total
+     /tmp/cck1aWTY.s:231    .bss.zx_context:0000000000000000 $d
+     /tmp/cck1aWTY.s:235    .bss.zx_context:0000000000000000 zx_context
+     /tmp/cck1aWTY.s:238    .bss.zx_cpu:0000000000000000 $d
+     /tmp/cck1aWTY.s:242    .bss.zx_cpu:0000000000000000 zx_cpu
+
+UNDEFINED SYMBOLS
+display_init
+input_key_init
+Z80Reset
+mem_readbyte
+mem_readword
+mem_writebyte
+mem_writeword
+mem_input
+mem_output
+Z80Emulate
+HAL_GetTick
+Z80Interrupt
+screen_draw

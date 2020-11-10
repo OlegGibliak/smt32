@@ -1,0 +1,1122 @@
+ARM GAS  /tmp/ccXgBjov.s 			page 1
+
+
+   1              		.cpu cortex-m4
+   2              		.eabi_attribute 27, 1
+   3              		.eabi_attribute 28, 1
+   4              		.eabi_attribute 20, 1
+   5              		.eabi_attribute 21, 1
+   6              		.eabi_attribute 23, 3
+   7              		.eabi_attribute 24, 1
+   8              		.eabi_attribute 25, 1
+   9              		.eabi_attribute 26, 1
+  10              		.eabi_attribute 30, 1
+  11              		.eabi_attribute 34, 1
+  12              		.eabi_attribute 18, 4
+  13              		.file	"snapshot.c"
+  14              		.text
+  15              	.Ltext0:
+  16              		.cfi_sections	.debug_frame
+  17              		.section	.rodata.snapshot_decompression.str1.4,"aMS",%progbits,1
+  18              		.align	2
+  19              	.LC0:
+  20 0000 50616765 		.ascii	"Page type %d size %d compressed %d\015\012\000"
+  20      20747970 
+  20      65202564 
+  20      2073697A 
+  20      65202564 
+  21 0025 000000   		.align	2
+  22              	.LC1:
+  23 0028 556E6B6E 		.ascii	"Unknown page type %d\015\012\000"
+  23      6F776E20 
+  23      70616765 
+  23      20747970 
+  23      65202564 
+  24              		.section	.text.snapshot_decompression,"ax",%progbits
+  25              		.align	1
+  26              		.arch armv7e-m
+  27              		.syntax unified
+  28              		.thumb
+  29              		.thumb_func
+  30              		.fpu fpv4-sp-d16
+  32              	snapshot_decompression:
+  33              	.LVL0:
+  34              	.LFB1:
+  35              		.file 1 "emulator/snapshot/snapshot.c"
+   1:emulator/snapshot/snapshot.c **** #include <stddef.h>
+   2:emulator/snapshot/snapshot.c **** #include "snapshot.h"
+   3:emulator/snapshot/snapshot.c **** #include "logger.h"
+   4:emulator/snapshot/snapshot.c **** #include "mem.h"
+   5:emulator/snapshot/snapshot.c **** #include "emulator.h"
+   6:emulator/snapshot/snapshot.c **** #include "screen.h"
+   7:emulator/snapshot/snapshot.c **** 
+   8:emulator/snapshot/snapshot.c **** #define SNAPSHOT_FILE_VERSION_VALID         (0)
+   9:emulator/snapshot/snapshot.c **** #define SNAPSHOT_LENGTH_MEANS_VERSION_2_1   (0x17)
+  10:emulator/snapshot/snapshot.c **** #define SNAPSHOT_LENGTH_MEANS_VERSION_3_0   (0x36)
+  11:emulator/snapshot/snapshot.c **** #define SNAPSHOT_FILE_VERSION_2_1           ("2.1")
+  12:emulator/snapshot/snapshot.c **** #define SNAPSHOT_FILE_VERSION_3_0           ("3.0")
+  13:emulator/snapshot/snapshot.c **** #define SNAPSHOT_LENGTH_TO_VERSION(_HEADER_LEN_)            \
+  14:emulator/snapshot/snapshot.c ****     ((_HEADER_LEN_ == SNAPSHOT_LENGTH_MEANS_VERSION_2_1) ?  \
+  15:emulator/snapshot/snapshot.c ****       SNAPSHOT_FILE_VERSION_2_1 :                           \
+ARM GAS  /tmp/ccXgBjov.s 			page 2
+
+
+  16:emulator/snapshot/snapshot.c ****       SNAPSHOT_FILE_VERSION_3_0)
+  17:emulator/snapshot/snapshot.c **** 
+  18:emulator/snapshot/snapshot.c **** #define MEM_PAGE_1                          (0x8000)
+  19:emulator/snapshot/snapshot.c **** #define MEM_PAGE_2                          (0xC000)
+  20:emulator/snapshot/snapshot.c **** #define MEM_PAGE_5                          (0x4000)
+  21:emulator/snapshot/snapshot.c **** #define MEM_PAGE_FULL_SIZE                  (0x4000)
+  22:emulator/snapshot/snapshot.c **** 
+  23:emulator/snapshot/snapshot.c **** #define IS_DATA_COMPRESSED(_DATA_SIZE_)     (_DATA_SIZE_ != 0xFFFF)
+  24:emulator/snapshot/snapshot.c **** 
+  25:emulator/snapshot/snapshot.c **** #define COMPRESSION_SEQUENCE_SIZE           (4)
+  26:emulator/snapshot/snapshot.c **** #define COMPRESSION_SEQUENCE                (0xEDED)
+  27:emulator/snapshot/snapshot.c **** #define COMPRESSION_END_MARKER              (0x00EDED00)
+  28:emulator/snapshot/snapshot.c **** 
+  29:emulator/snapshot/snapshot.c **** typedef enum
+  30:emulator/snapshot/snapshot.c **** {
+  31:emulator/snapshot/snapshot.c ****     PAGE_TYPE_0 = 0, /* 48K rom         rom (basic)     48K rom (Not suported)*/
+  32:emulator/snapshot/snapshot.c ****     PAGE_TYPE_4 = 4, /* 8000-bfff       page 1          Normal 8000-bfff*/
+  33:emulator/snapshot/snapshot.c ****     PAGE_TYPE_5 = 5, /* c000-ffff       page 2          Normal c000-ffff*/
+  34:emulator/snapshot/snapshot.c ****     PAGE_TYPE_8 = 8  /* 4000-7fff       page 5          4000-7fff*/
+  35:emulator/snapshot/snapshot.c **** } page_type_t;
+  36:emulator/snapshot/snapshot.c **** 
+  37:emulator/snapshot/snapshot.c **** typedef enum
+  38:emulator/snapshot/snapshot.c **** {
+  39:emulator/snapshot/snapshot.c ****     HARDWARE_MODE_0 = 0, /* 48k        */
+  40:emulator/snapshot/snapshot.c ****     HARDWARE_MODE_1      /* 48k + If.1 */
+  41:emulator/snapshot/snapshot.c **** } hardware_mode_t;
+  42:emulator/snapshot/snapshot.c **** 
+  43:emulator/snapshot/snapshot.c **** typedef struct __attribute__((packed))
+  44:emulator/snapshot/snapshot.c **** {
+  45:emulator/snapshot/snapshot.c ****     uint16_t len;
+  46:emulator/snapshot/snapshot.c ****     uint8_t  page_type;
+  47:emulator/snapshot/snapshot.c ****     uint8_t  data[];
+  48:emulator/snapshot/snapshot.c **** } block_info_t;
+  49:emulator/snapshot/snapshot.c **** 
+  50:emulator/snapshot/snapshot.c **** static void snapshot_set_state(const snapshot_header_t *header,
+  51:emulator/snapshot/snapshot.c ****                                const snapshot_add_header_t *add_header)
+  52:emulator/snapshot/snapshot.c **** {
+  53:emulator/snapshot/snapshot.c ****     Z80_STATE *cpu = emulator_cpu_state_get();
+  54:emulator/snapshot/snapshot.c ****     uint8_t flags1 = (header->flags1.intr == 255) ? 1 : header->flags1.intr;
+  55:emulator/snapshot/snapshot.c **** 
+  56:emulator/snapshot/snapshot.c **** 	cpu->registers.byte[Z80_A]  = header->a;
+  57:emulator/snapshot/snapshot.c **** 	cpu->registers.byte[Z80_F]  = header->f;
+  58:emulator/snapshot/snapshot.c **** 	cpu->registers.word[Z80_BC] = header->bc;
+  59:emulator/snapshot/snapshot.c **** 	cpu->registers.word[Z80_HL] = header->hl;
+  60:emulator/snapshot/snapshot.c **** 	cpu->registers.word[Z80_SP] = header->sp;
+  61:emulator/snapshot/snapshot.c **** 	cpu->i  = header->interrupt_register;
+  62:emulator/snapshot/snapshot.c **** 	cpu->r  = (header->refresh_register & 0x7F) | ((flags1 & 0x01) << 7);
+  63:emulator/snapshot/snapshot.c **** 	cpu->im = header->flags2 & 0x3;
+  64:emulator/snapshot/snapshot.c **** 	cpu->registers.word[Z80_DE] = header->de;
+  65:emulator/snapshot/snapshot.c **** 	cpu->alternates[Z80_BC] = header->bc_dash;
+  66:emulator/snapshot/snapshot.c **** 	cpu->alternates[Z80_DE] = header->de_dash;
+  67:emulator/snapshot/snapshot.c **** 	cpu->alternates[Z80_HL] = header->hl_dash;
+  68:emulator/snapshot/snapshot.c **** 	cpu->alternates[Z80_AF] = header->f_dash | (header->a_dash << 8);
+  69:emulator/snapshot/snapshot.c **** 	cpu->registers.word[Z80_IY] = header->IY;
+  70:emulator/snapshot/snapshot.c **** 	cpu->registers.word[Z80_IX] = header->IX;
+  71:emulator/snapshot/snapshot.c **** 	cpu->iff1 = header->interrupt_flip_flop;
+  72:emulator/snapshot/snapshot.c **** 	cpu->iff2 = header->IFF2;
+ARM GAS  /tmp/ccXgBjov.s 			page 3
+
+
+  73:emulator/snapshot/snapshot.c ****     if (add_header != NULL)
+  74:emulator/snapshot/snapshot.c ****     {
+  75:emulator/snapshot/snapshot.c **** 	    cpu->pc   = add_header->pc;
+  76:emulator/snapshot/snapshot.c ****     }
+  77:emulator/snapshot/snapshot.c ****     else{
+  78:emulator/snapshot/snapshot.c ****         cpu->pc = header->version;
+  79:emulator/snapshot/snapshot.c ****     }
+  80:emulator/snapshot/snapshot.c ****     screen_draw_border((flags1 & 0x0E) >> 1);
+  81:emulator/snapshot/snapshot.c **** }
+  82:emulator/snapshot/snapshot.c **** 
+  83:emulator/snapshot/snapshot.c **** static void snapshot_decompression(const uint8_t *data, page_type_t page_type, uint16_t page_size, 
+  84:emulator/snapshot/snapshot.c **** {
+  36              		.loc 1 84 1 view -0
+  37              		.cfi_startproc
+  38              		@ args = 0, pretend = 0, frame = 0
+  39              		@ frame_needed = 0, uses_anonymous_args = 0
+  40              		.loc 1 84 1 is_stmt 0 view .LVU1
+  41 0000 2DE9F84F 		push	{r3, r4, r5, r6, r7, r8, r9, r10, fp, lr}
+  42              	.LCFI0:
+  43              		.cfi_def_cfa_offset 40
+  44              		.cfi_offset 3, -40
+  45              		.cfi_offset 4, -36
+  46              		.cfi_offset 5, -32
+  47              		.cfi_offset 6, -28
+  48              		.cfi_offset 7, -24
+  49              		.cfi_offset 8, -20
+  50              		.cfi_offset 9, -16
+  51              		.cfi_offset 10, -12
+  52              		.cfi_offset 11, -8
+  53              		.cfi_offset 14, -4
+  54 0004 0646     		mov	r6, r0
+  55 0006 0C46     		mov	r4, r1
+  56 0008 1746     		mov	r7, r2
+  57 000a 9946     		mov	r9, r3
+  85:emulator/snapshot/snapshot.c ****     logger("Page type %d size %d compressed %d\r\n", page_type, page_size, compressed);
+  58              		.loc 1 85 5 is_stmt 1 view .LVU2
+  59 000c 9046     		mov	r8, r2
+  60 000e 2248     		ldr	r0, .L14
+  61              	.LVL1:
+  62              		.loc 1 85 5 is_stmt 0 view .LVU3
+  63 0010 FFF7FEFF 		bl	logger
+  64              	.LVL2:
+  86:emulator/snapshot/snapshot.c ****     uint16_t mem_addr;
+  65              		.loc 1 86 5 is_stmt 1 view .LVU4
+  87:emulator/snapshot/snapshot.c ****     switch (page_type)
+  66              		.loc 1 87 5 view .LVU5
+  67 0014 052C     		cmp	r4, #5
+  68 0016 35D0     		beq	.L10
+  69 0018 082C     		cmp	r4, #8
+  70 001a 36D0     		beq	.L11
+  71 001c 042C     		cmp	r4, #4
+  72 001e 38D0     		beq	.L12
+  88:emulator/snapshot/snapshot.c ****     {
+  89:emulator/snapshot/snapshot.c ****         case PAGE_TYPE_4: mem_addr = MEM_PAGE_1; break;
+  90:emulator/snapshot/snapshot.c ****         case PAGE_TYPE_5: mem_addr = MEM_PAGE_2; break;
+  91:emulator/snapshot/snapshot.c ****         case PAGE_TYPE_8: mem_addr = MEM_PAGE_5; break;
+  92:emulator/snapshot/snapshot.c ****         default: 
+ARM GAS  /tmp/ccXgBjov.s 			page 4
+
+
+  93:emulator/snapshot/snapshot.c ****             logger("Unknown page type %d\r\n", page_type);
+  73              		.loc 1 93 13 view .LVU6
+  74 0020 2146     		mov	r1, r4
+  75 0022 1E48     		ldr	r0, .L14+4
+  76 0024 FFF7FEFF 		bl	logger
+  77              	.LVL3:
+  94:emulator/snapshot/snapshot.c ****             return;
+  78              		.loc 1 94 13 view .LVU7
+  79              	.L1:
+  95:emulator/snapshot/snapshot.c ****     }
+  96:emulator/snapshot/snapshot.c ****     
+  97:emulator/snapshot/snapshot.c **** 
+  98:emulator/snapshot/snapshot.c ****     for (uint16_t i = 0; i < page_size; ++i)
+  99:emulator/snapshot/snapshot.c ****     {
+ 100:emulator/snapshot/snapshot.c ****         if ((page_size - i) > COMPRESSION_SEQUENCE_SIZE)
+ 101:emulator/snapshot/snapshot.c ****         {
+ 102:emulator/snapshot/snapshot.c ****             /* Looking the end-marker. (Only for header version up to 1.4)*/
+ 103:emulator/snapshot/snapshot.c ****             uint8_t data32 = *(uint32_t *) &data[i];
+ 104:emulator/snapshot/snapshot.c ****             if (compressed && data32 == COMPRESSION_END_MARKER)
+ 105:emulator/snapshot/snapshot.c **** 			{
+ 106:emulator/snapshot/snapshot.c ****                 logger("COMPRESSION_END_MARKER found\r\n");
+ 107:emulator/snapshot/snapshot.c **** 				break;
+ 108:emulator/snapshot/snapshot.c **** 			}
+ 109:emulator/snapshot/snapshot.c **** 
+ 110:emulator/snapshot/snapshot.c ****             uint16_t data16 = *(uint16_t *) &data[i];
+ 111:emulator/snapshot/snapshot.c ****             if (compressed && data16 == COMPRESSION_SEQUENCE)
+ 112:emulator/snapshot/snapshot.c ****             {
+ 113:emulator/snapshot/snapshot.c ****                 i += sizeof(data16); /* size of COMPRESSION_SEQUENCE. */
+ 114:emulator/snapshot/snapshot.c **** 
+ 115:emulator/snapshot/snapshot.c ****                 uint8_t repeats = data[i++];
+ 116:emulator/snapshot/snapshot.c ****                 uint8_t value   = data[i];
+ 117:emulator/snapshot/snapshot.c ****                 while (repeats--)
+ 118:emulator/snapshot/snapshot.c ****                 {
+ 119:emulator/snapshot/snapshot.c ****                     mem_writebyte(mem_addr++, value);
+ 120:emulator/snapshot/snapshot.c ****                 }
+ 121:emulator/snapshot/snapshot.c **** 
+ 122:emulator/snapshot/snapshot.c ****                 continue;
+ 123:emulator/snapshot/snapshot.c ****             }
+ 124:emulator/snapshot/snapshot.c ****         }
+ 125:emulator/snapshot/snapshot.c **** 
+ 126:emulator/snapshot/snapshot.c ****         mem_writebyte(mem_addr++, data[i]);
+ 127:emulator/snapshot/snapshot.c ****     }
+ 128:emulator/snapshot/snapshot.c **** }
+  80              		.loc 1 128 1 is_stmt 0 view .LVU8
+  81 0028 BDE8F88F 		pop	{r3, r4, r5, r6, r7, r8, r9, r10, fp, pc}
+  82              	.LVL4:
+  83              	.L6:
+  84              	.LBB2:
+  85              	.LBB3:
+  86              	.LBB4:
+ 119:emulator/snapshot/snapshot.c ****                 }
+  87              		.loc 1 119 21 is_stmt 1 view .LVU9
+  88 002c 00F1010A 		add	r10, r0, #1
+  89 0030 1FFA8AFA 		uxth	r10, r10
+  90              	.LVL5:
+ 119:emulator/snapshot/snapshot.c ****                 }
+  91              		.loc 1 119 21 is_stmt 0 view .LVU10
+ARM GAS  /tmp/ccXgBjov.s 			page 5
+
+
+  92 0034 5946     		mov	r1, fp
+  93 0036 FFF7FEFF 		bl	mem_writebyte
+  94              	.LVL6:
+ 117:emulator/snapshot/snapshot.c ****                 {
+  95              		.loc 1 117 31 view .LVU11
+  96 003a 2B46     		mov	r3, r5
+ 119:emulator/snapshot/snapshot.c ****                 }
+  97              		.loc 1 119 21 view .LVU12
+  98 003c 5046     		mov	r0, r10
+  99              	.LVL7:
+ 100              	.L5:
+ 117:emulator/snapshot/snapshot.c ****                 {
+ 101              		.loc 1 117 23 is_stmt 1 view .LVU13
+ 117:emulator/snapshot/snapshot.c ****                 {
+ 102              		.loc 1 117 31 is_stmt 0 view .LVU14
+ 103 003e 5D1E     		subs	r5, r3, #1
+ 104 0040 EDB2     		uxtb	r5, r5
+ 105              	.LVL8:
+ 117:emulator/snapshot/snapshot.c ****                 {
+ 106              		.loc 1 117 23 view .LVU15
+ 107 0042 002B     		cmp	r3, #0
+ 108 0044 F2D1     		bne	.L6
+ 109 0046 05E0     		b	.L7
+ 110              	.LVL9:
+ 111              	.L4:
+ 117:emulator/snapshot/snapshot.c ****                 {
+ 112              		.loc 1 117 23 view .LVU16
+ 113              	.LBE4:
+ 114              	.LBE3:
+ 126:emulator/snapshot/snapshot.c ****     }
+ 115              		.loc 1 126 9 is_stmt 1 view .LVU17
+ 116 0048 451C     		adds	r5, r0, #1
+ 117 004a ADB2     		uxth	r5, r5
+ 118              	.LVL10:
+ 126:emulator/snapshot/snapshot.c ****     }
+ 119              		.loc 1 126 9 is_stmt 0 view .LVU18
+ 120 004c 315D     		ldrb	r1, [r6, r4]	@ zero_extendqisi2
+ 121 004e FFF7FEFF 		bl	mem_writebyte
+ 122              	.LVL11:
+ 123 0052 2846     		mov	r0, r5
+ 124              	.LVL12:
+ 125              	.L7:
+  98:emulator/snapshot/snapshot.c ****     {
+ 126              		.loc 1 98 41 is_stmt 1 discriminator 2 view .LVU19
+ 127 0054 0134     		adds	r4, r4, #1
+ 128              	.LVL13:
+  98:emulator/snapshot/snapshot.c ****     {
+ 129              		.loc 1 98 41 is_stmt 0 discriminator 2 view .LVU20
+ 130 0056 A4B2     		uxth	r4, r4
+ 131              	.LVL14:
+ 132              	.L8:
+  98:emulator/snapshot/snapshot.c ****     {
+ 133              		.loc 1 98 26 is_stmt 1 discriminator 1 view .LVU21
+  98:emulator/snapshot/snapshot.c ****     {
+ 134              		.loc 1 98 5 is_stmt 0 discriminator 1 view .LVU22
+ 135 0058 BC42     		cmp	r4, r7
+ 136 005a E5D2     		bcs	.L1
+ARM GAS  /tmp/ccXgBjov.s 			page 6
+
+
+ 100:emulator/snapshot/snapshot.c ****         {
+ 137              		.loc 1 100 9 is_stmt 1 view .LVU23
+ 100:emulator/snapshot/snapshot.c ****         {
+ 138              		.loc 1 100 24 is_stmt 0 view .LVU24
+ 139 005c A8EB0403 		sub	r3, r8, r4
+ 100:emulator/snapshot/snapshot.c ****         {
+ 140              		.loc 1 100 12 view .LVU25
+ 141 0060 042B     		cmp	r3, #4
+ 142 0062 F1DD     		ble	.L4
+ 143              	.LBB6:
+ 103:emulator/snapshot/snapshot.c ****             if (compressed && data32 == COMPRESSION_END_MARKER)
+ 144              		.loc 1 103 13 is_stmt 1 view .LVU26
+ 145              	.LVL15:
+ 104:emulator/snapshot/snapshot.c **** 			{
+ 146              		.loc 1 104 13 view .LVU27
+ 110:emulator/snapshot/snapshot.c ****             if (compressed && data16 == COMPRESSION_SEQUENCE)
+ 147              		.loc 1 110 13 view .LVU28
+ 110:emulator/snapshot/snapshot.c ****             if (compressed && data16 == COMPRESSION_SEQUENCE)
+ 148              		.loc 1 110 22 is_stmt 0 view .LVU29
+ 149 0064 335B     		ldrh	r3, [r6, r4]
+ 150              	.LVL16:
+ 111:emulator/snapshot/snapshot.c ****             {
+ 151              		.loc 1 111 13 is_stmt 1 view .LVU30
+ 111:emulator/snapshot/snapshot.c ****             {
+ 152              		.loc 1 111 16 is_stmt 0 view .LVU31
+ 153 0066 B9F1000F 		cmp	r9, #0
+ 154 006a EDD0     		beq	.L4
+ 111:emulator/snapshot/snapshot.c ****             {
+ 155              		.loc 1 111 28 discriminator 1 view .LVU32
+ 156 006c 4EF6ED52 		movw	r2, #60909
+ 157 0070 9342     		cmp	r3, r2
+ 158 0072 E9D1     		bne	.L4
+ 159              	.LBB5:
+ 113:emulator/snapshot/snapshot.c **** 
+ 160              		.loc 1 113 17 is_stmt 1 view .LVU33
+ 113:emulator/snapshot/snapshot.c **** 
+ 161              		.loc 1 113 19 is_stmt 0 view .LVU34
+ 162 0074 A31C     		adds	r3, r4, #2
+ 163              	.LVL17:
+ 113:emulator/snapshot/snapshot.c **** 
+ 164              		.loc 1 113 19 view .LVU35
+ 165 0076 9BB2     		uxth	r3, r3
+ 166              	.LVL18:
+ 115:emulator/snapshot/snapshot.c ****                 uint8_t value   = data[i];
+ 167              		.loc 1 115 17 is_stmt 1 view .LVU36
+ 115:emulator/snapshot/snapshot.c ****                 uint8_t value   = data[i];
+ 168              		.loc 1 115 41 is_stmt 0 view .LVU37
+ 169 0078 0334     		adds	r4, r4, #3
+ 170              	.LVL19:
+ 115:emulator/snapshot/snapshot.c ****                 uint8_t value   = data[i];
+ 171              		.loc 1 115 41 view .LVU38
+ 172 007a A4B2     		uxth	r4, r4
+ 173              	.LVL20:
+ 115:emulator/snapshot/snapshot.c ****                 uint8_t value   = data[i];
+ 174              		.loc 1 115 25 view .LVU39
+ 175 007c F35C     		ldrb	r3, [r6, r3]	@ zero_extendqisi2
+ 176              	.LVL21:
+ARM GAS  /tmp/ccXgBjov.s 			page 7
+
+
+ 116:emulator/snapshot/snapshot.c ****                 while (repeats--)
+ 177              		.loc 1 116 17 is_stmt 1 view .LVU40
+ 116:emulator/snapshot/snapshot.c ****                 while (repeats--)
+ 178              		.loc 1 116 25 is_stmt 0 view .LVU41
+ 179 007e 16F804B0 		ldrb	fp, [r6, r4]	@ zero_extendqisi2
+ 180              	.LVL22:
+ 117:emulator/snapshot/snapshot.c ****                 {
+ 181              		.loc 1 117 17 is_stmt 1 view .LVU42
+ 117:emulator/snapshot/snapshot.c ****                 {
+ 182              		.loc 1 117 23 is_stmt 0 view .LVU43
+ 183 0082 DCE7     		b	.L5
+ 184              	.LVL23:
+ 185              	.L10:
+ 117:emulator/snapshot/snapshot.c ****                 {
+ 186              		.loc 1 117 23 view .LVU44
+ 187              	.LBE5:
+ 188              	.LBE6:
+ 189              	.LBE2:
+  90:emulator/snapshot/snapshot.c ****         case PAGE_TYPE_8: mem_addr = MEM_PAGE_5; break;
+ 190              		.loc 1 90 36 view .LVU45
+ 191 0084 4FF44040 		mov	r0, #49152
+ 192 0088 01E0     		b	.L2
+ 193              	.L11:
+  91:emulator/snapshot/snapshot.c ****         default: 
+ 194              		.loc 1 91 36 view .LVU46
+ 195 008a 4FF48040 		mov	r0, #16384
+ 196              	.L2:
+  87:emulator/snapshot/snapshot.c ****     {
+ 197              		.loc 1 87 5 discriminator 1 view .LVU47
+ 198 008e 0024     		movs	r4, #0
+ 199 0090 E2E7     		b	.L8
+ 200              	.L12:
+  87:emulator/snapshot/snapshot.c ****     {
+ 201              		.loc 1 87 5 view .LVU48
+ 202 0092 4FF40040 		mov	r0, #32768
+ 203 0096 FAE7     		b	.L2
+ 204              	.L15:
+ 205              		.align	2
+ 206              	.L14:
+ 207 0098 00000000 		.word	.LC0
+ 208 009c 28000000 		.word	.LC1
+ 209              		.cfi_endproc
+ 210              	.LFE1:
+ 212              		.section	.text.snapshot_set_state,"ax",%progbits
+ 213              		.align	1
+ 214              		.syntax unified
+ 215              		.thumb
+ 216              		.thumb_func
+ 217              		.fpu fpv4-sp-d16
+ 219              	snapshot_set_state:
+ 220              	.LVL24:
+ 221              	.LFB0:
+  52:emulator/snapshot/snapshot.c ****     Z80_STATE *cpu = emulator_cpu_state_get();
+ 222              		.loc 1 52 1 is_stmt 1 view -0
+ 223              		.cfi_startproc
+ 224              		@ args = 0, pretend = 0, frame = 0
+ 225              		@ frame_needed = 0, uses_anonymous_args = 0
+ARM GAS  /tmp/ccXgBjov.s 			page 8
+
+
+  52:emulator/snapshot/snapshot.c ****     Z80_STATE *cpu = emulator_cpu_state_get();
+ 226              		.loc 1 52 1 is_stmt 0 view .LVU50
+ 227 0000 38B5     		push	{r3, r4, r5, lr}
+ 228              	.LCFI1:
+ 229              		.cfi_def_cfa_offset 16
+ 230              		.cfi_offset 3, -16
+ 231              		.cfi_offset 4, -12
+ 232              		.cfi_offset 5, -8
+ 233              		.cfi_offset 14, -4
+ 234 0002 0446     		mov	r4, r0
+ 235 0004 0D46     		mov	r5, r1
+  53:emulator/snapshot/snapshot.c ****     uint8_t flags1 = (header->flags1.intr == 255) ? 1 : header->flags1.intr;
+ 236              		.loc 1 53 5 is_stmt 1 view .LVU51
+  53:emulator/snapshot/snapshot.c ****     uint8_t flags1 = (header->flags1.intr == 255) ? 1 : header->flags1.intr;
+ 237              		.loc 1 53 22 is_stmt 0 view .LVU52
+ 238 0006 FFF7FEFF 		bl	emulator_cpu_state_get
+ 239              	.LVL25:
+  54:emulator/snapshot/snapshot.c **** 
+ 240              		.loc 1 54 5 is_stmt 1 view .LVU53
+  54:emulator/snapshot/snapshot.c **** 
+ 241              		.loc 1 54 37 is_stmt 0 view .LVU54
+ 242 000a 237B     		ldrb	r3, [r4, #12]	@ zero_extendqisi2
+  54:emulator/snapshot/snapshot.c **** 
+ 243              		.loc 1 54 13 view .LVU55
+ 244 000c FF2B     		cmp	r3, #255
+ 245 000e 3AD0     		beq	.L21
+ 246              	.L17:
+ 247              	.LVL26:
+  56:emulator/snapshot/snapshot.c **** 	cpu->registers.byte[Z80_F]  = header->f;
+ 248              		.loc 1 56 2 is_stmt 1 discriminator 4 view .LVU56
+  56:emulator/snapshot/snapshot.c **** 	cpu->registers.byte[Z80_F]  = header->f;
+ 249              		.loc 1 56 38 is_stmt 0 discriminator 4 view .LVU57
+ 250 0010 2278     		ldrb	r2, [r4]	@ zero_extendqisi2
+  56:emulator/snapshot/snapshot.c **** 	cpu->registers.byte[Z80_F]  = header->f;
+ 251              		.loc 1 56 30 discriminator 4 view .LVU58
+ 252 0012 C272     		strb	r2, [r0, #11]
+  57:emulator/snapshot/snapshot.c **** 	cpu->registers.word[Z80_BC] = header->bc;
+ 253              		.loc 1 57 2 is_stmt 1 discriminator 4 view .LVU59
+  57:emulator/snapshot/snapshot.c **** 	cpu->registers.word[Z80_BC] = header->bc;
+ 254              		.loc 1 57 38 is_stmt 0 discriminator 4 view .LVU60
+ 255 0014 6278     		ldrb	r2, [r4, #1]	@ zero_extendqisi2
+  57:emulator/snapshot/snapshot.c **** 	cpu->registers.word[Z80_BC] = header->bc;
+ 256              		.loc 1 57 30 discriminator 4 view .LVU61
+ 257 0016 8272     		strb	r2, [r0, #10]
+  58:emulator/snapshot/snapshot.c **** 	cpu->registers.word[Z80_HL] = header->hl;
+ 258              		.loc 1 58 2 is_stmt 1 discriminator 4 view .LVU62
+  58:emulator/snapshot/snapshot.c **** 	cpu->registers.word[Z80_HL] = header->hl;
+ 259              		.loc 1 58 38 is_stmt 0 discriminator 4 view .LVU63
+ 260 0018 6288     		ldrh	r2, [r4, #2]	@ unaligned
+  58:emulator/snapshot/snapshot.c **** 	cpu->registers.word[Z80_HL] = header->hl;
+ 261              		.loc 1 58 30 discriminator 4 view .LVU64
+ 262 001a 8280     		strh	r2, [r0, #4]	@ movhi
+  59:emulator/snapshot/snapshot.c **** 	cpu->registers.word[Z80_SP] = header->sp;
+ 263              		.loc 1 59 2 is_stmt 1 discriminator 4 view .LVU65
+  59:emulator/snapshot/snapshot.c **** 	cpu->registers.word[Z80_SP] = header->sp;
+ 264              		.loc 1 59 38 is_stmt 0 discriminator 4 view .LVU66
+ 265 001c A288     		ldrh	r2, [r4, #4]	@ unaligned
+ARM GAS  /tmp/ccXgBjov.s 			page 9
+
+
+  59:emulator/snapshot/snapshot.c **** 	cpu->registers.word[Z80_SP] = header->sp;
+ 266              		.loc 1 59 30 discriminator 4 view .LVU67
+ 267 001e 0281     		strh	r2, [r0, #8]	@ movhi
+  60:emulator/snapshot/snapshot.c **** 	cpu->i  = header->interrupt_register;
+ 268              		.loc 1 60 2 is_stmt 1 discriminator 4 view .LVU68
+  60:emulator/snapshot/snapshot.c **** 	cpu->i  = header->interrupt_register;
+ 269              		.loc 1 60 38 is_stmt 0 discriminator 4 view .LVU69
+ 270 0020 2289     		ldrh	r2, [r4, #8]	@ unaligned
+  60:emulator/snapshot/snapshot.c **** 	cpu->i  = header->interrupt_register;
+ 271              		.loc 1 60 30 discriminator 4 view .LVU70
+ 272 0022 0282     		strh	r2, [r0, #16]	@ movhi
+  61:emulator/snapshot/snapshot.c **** 	cpu->r  = (header->refresh_register & 0x7F) | ((flags1 & 0x01) << 7);
+ 273              		.loc 1 61 2 is_stmt 1 discriminator 4 view .LVU71
+  61:emulator/snapshot/snapshot.c **** 	cpu->r  = (header->refresh_register & 0x7F) | ((flags1 & 0x01) << 7);
+ 274              		.loc 1 61 18 is_stmt 0 discriminator 4 view .LVU72
+ 275 0024 A27A     		ldrb	r2, [r4, #10]	@ zero_extendqisi2
+  61:emulator/snapshot/snapshot.c **** 	cpu->r  = (header->refresh_register & 0x7F) | ((flags1 & 0x01) << 7);
+ 276              		.loc 1 61 10 discriminator 4 view .LVU73
+ 277 0026 C261     		str	r2, [r0, #28]
+  62:emulator/snapshot/snapshot.c **** 	cpu->im = header->flags2 & 0x3;
+ 278              		.loc 1 62 2 is_stmt 1 discriminator 4 view .LVU74
+  62:emulator/snapshot/snapshot.c **** 	cpu->im = header->flags2 & 0x3;
+ 279              		.loc 1 62 19 is_stmt 0 discriminator 4 view .LVU75
+ 280 0028 E27A     		ldrb	r2, [r4, #11]	@ zero_extendqisi2
+  62:emulator/snapshot/snapshot.c **** 	cpu->im = header->flags2 & 0x3;
+ 281              		.loc 1 62 38 discriminator 4 view .LVU76
+ 282 002a 02F07F02 		and	r2, r2, #127
+  62:emulator/snapshot/snapshot.c **** 	cpu->im = header->flags2 & 0x3;
+ 283              		.loc 1 62 65 discriminator 4 view .LVU77
+ 284 002e 1946     		mov	r1, r3
+ 285 0030 DB01     		lsls	r3, r3, #7
+ 286              	.LVL27:
+  62:emulator/snapshot/snapshot.c **** 	cpu->im = header->flags2 & 0x3;
+ 287              		.loc 1 62 65 discriminator 4 view .LVU78
+ 288 0032 DBB2     		uxtb	r3, r3
+  62:emulator/snapshot/snapshot.c **** 	cpu->im = header->flags2 & 0x3;
+ 289              		.loc 1 62 46 discriminator 4 view .LVU79
+ 290 0034 1343     		orrs	r3, r3, r2
+  62:emulator/snapshot/snapshot.c **** 	cpu->im = header->flags2 & 0x3;
+ 291              		.loc 1 62 10 discriminator 4 view .LVU80
+ 292 0036 0362     		str	r3, [r0, #32]
+  63:emulator/snapshot/snapshot.c **** 	cpu->registers.word[Z80_DE] = header->de;
+ 293              		.loc 1 63 2 is_stmt 1 discriminator 4 view .LVU81
+  63:emulator/snapshot/snapshot.c **** 	cpu->registers.word[Z80_DE] = header->de;
+ 294              		.loc 1 63 18 is_stmt 0 discriminator 4 view .LVU82
+ 295 0038 637F     		ldrb	r3, [r4, #29]	@ zero_extendqisi2
+  63:emulator/snapshot/snapshot.c **** 	cpu->registers.word[Z80_DE] = header->de;
+ 296              		.loc 1 63 27 discriminator 4 view .LVU83
+ 297 003a 03F00303 		and	r3, r3, #3
+  63:emulator/snapshot/snapshot.c **** 	cpu->registers.word[Z80_DE] = header->de;
+ 298              		.loc 1 63 10 discriminator 4 view .LVU84
+ 299 003e 0363     		str	r3, [r0, #48]
+  64:emulator/snapshot/snapshot.c **** 	cpu->alternates[Z80_BC] = header->bc_dash;
+ 300              		.loc 1 64 2 is_stmt 1 discriminator 4 view .LVU85
+  64:emulator/snapshot/snapshot.c **** 	cpu->alternates[Z80_BC] = header->bc_dash;
+ 301              		.loc 1 64 38 is_stmt 0 discriminator 4 view .LVU86
+ 302 0040 B4F80D30 		ldrh	r3, [r4, #13]	@ unaligned
+ARM GAS  /tmp/ccXgBjov.s 			page 10
+
+
+  64:emulator/snapshot/snapshot.c **** 	cpu->alternates[Z80_BC] = header->bc_dash;
+ 303              		.loc 1 64 30 discriminator 4 view .LVU87
+ 304 0044 C380     		strh	r3, [r0, #6]	@ movhi
+  65:emulator/snapshot/snapshot.c **** 	cpu->alternates[Z80_DE] = header->de_dash;
+ 305              		.loc 1 65 2 is_stmt 1 discriminator 4 view .LVU88
+  65:emulator/snapshot/snapshot.c **** 	cpu->alternates[Z80_DE] = header->de_dash;
+ 306              		.loc 1 65 34 is_stmt 0 discriminator 4 view .LVU89
+ 307 0046 B4F80F30 		ldrh	r3, [r4, #15]	@ unaligned
+  65:emulator/snapshot/snapshot.c **** 	cpu->alternates[Z80_DE] = header->de_dash;
+ 308              		.loc 1 65 26 discriminator 4 view .LVU90
+ 309 004a 4382     		strh	r3, [r0, #18]	@ movhi
+  66:emulator/snapshot/snapshot.c **** 	cpu->alternates[Z80_HL] = header->hl_dash;
+ 310              		.loc 1 66 2 is_stmt 1 discriminator 4 view .LVU91
+  66:emulator/snapshot/snapshot.c **** 	cpu->alternates[Z80_HL] = header->hl_dash;
+ 311              		.loc 1 66 34 is_stmt 0 discriminator 4 view .LVU92
+ 312 004c B4F81130 		ldrh	r3, [r4, #17]	@ unaligned
+  66:emulator/snapshot/snapshot.c **** 	cpu->alternates[Z80_HL] = header->hl_dash;
+ 313              		.loc 1 66 26 discriminator 4 view .LVU93
+ 314 0050 8382     		strh	r3, [r0, #20]	@ movhi
+  67:emulator/snapshot/snapshot.c **** 	cpu->alternates[Z80_AF] = header->f_dash | (header->a_dash << 8);
+ 315              		.loc 1 67 2 is_stmt 1 discriminator 4 view .LVU94
+  67:emulator/snapshot/snapshot.c **** 	cpu->alternates[Z80_AF] = header->f_dash | (header->a_dash << 8);
+ 316              		.loc 1 67 34 is_stmt 0 discriminator 4 view .LVU95
+ 317 0052 B4F81330 		ldrh	r3, [r4, #19]	@ unaligned
+  67:emulator/snapshot/snapshot.c **** 	cpu->alternates[Z80_AF] = header->f_dash | (header->a_dash << 8);
+ 318              		.loc 1 67 26 discriminator 4 view .LVU96
+ 319 0056 C382     		strh	r3, [r0, #22]	@ movhi
+  68:emulator/snapshot/snapshot.c **** 	cpu->registers.word[Z80_IY] = header->IY;
+ 320              		.loc 1 68 2 is_stmt 1 discriminator 4 view .LVU97
+  68:emulator/snapshot/snapshot.c **** 	cpu->registers.word[Z80_IY] = header->IY;
+ 321              		.loc 1 68 34 is_stmt 0 discriminator 4 view .LVU98
+ 322 0058 A37D     		ldrb	r3, [r4, #22]	@ zero_extendqisi2
+  68:emulator/snapshot/snapshot.c **** 	cpu->registers.word[Z80_IY] = header->IY;
+ 323              		.loc 1 68 52 discriminator 4 view .LVU99
+ 324 005a 627D     		ldrb	r2, [r4, #21]	@ zero_extendqisi2
+  68:emulator/snapshot/snapshot.c **** 	cpu->registers.word[Z80_IY] = header->IY;
+ 325              		.loc 1 68 43 discriminator 4 view .LVU100
+ 326 005c 43EA0223 		orr	r3, r3, r2, lsl #8
+  68:emulator/snapshot/snapshot.c **** 	cpu->registers.word[Z80_IY] = header->IY;
+ 327              		.loc 1 68 26 discriminator 4 view .LVU101
+ 328 0060 0383     		strh	r3, [r0, #24]	@ movhi
+  69:emulator/snapshot/snapshot.c **** 	cpu->registers.word[Z80_IX] = header->IX;
+ 329              		.loc 1 69 2 is_stmt 1 discriminator 4 view .LVU102
+  69:emulator/snapshot/snapshot.c **** 	cpu->registers.word[Z80_IX] = header->IX;
+ 330              		.loc 1 69 38 is_stmt 0 discriminator 4 view .LVU103
+ 331 0062 B4F81730 		ldrh	r3, [r4, #23]	@ unaligned
+  69:emulator/snapshot/snapshot.c **** 	cpu->registers.word[Z80_IX] = header->IX;
+ 332              		.loc 1 69 30 discriminator 4 view .LVU104
+ 333 0066 C381     		strh	r3, [r0, #14]	@ movhi
+  70:emulator/snapshot/snapshot.c **** 	cpu->iff1 = header->interrupt_flip_flop;
+ 334              		.loc 1 70 2 is_stmt 1 discriminator 4 view .LVU105
+  70:emulator/snapshot/snapshot.c **** 	cpu->iff1 = header->interrupt_flip_flop;
+ 335              		.loc 1 70 38 is_stmt 0 discriminator 4 view .LVU106
+ 336 0068 B4F81930 		ldrh	r3, [r4, #25]	@ unaligned
+  70:emulator/snapshot/snapshot.c **** 	cpu->iff1 = header->interrupt_flip_flop;
+ 337              		.loc 1 70 30 discriminator 4 view .LVU107
+ 338 006c 8381     		strh	r3, [r0, #12]	@ movhi
+ARM GAS  /tmp/ccXgBjov.s 			page 11
+
+
+  71:emulator/snapshot/snapshot.c **** 	cpu->iff2 = header->IFF2;
+ 339              		.loc 1 71 2 is_stmt 1 discriminator 4 view .LVU108
+  71:emulator/snapshot/snapshot.c **** 	cpu->iff2 = header->IFF2;
+ 340              		.loc 1 71 20 is_stmt 0 discriminator 4 view .LVU109
+ 341 006e E37E     		ldrb	r3, [r4, #27]	@ zero_extendqisi2
+  71:emulator/snapshot/snapshot.c **** 	cpu->iff2 = header->IFF2;
+ 342              		.loc 1 71 12 discriminator 4 view .LVU110
+ 343 0070 8362     		str	r3, [r0, #40]
+  72:emulator/snapshot/snapshot.c ****     if (add_header != NULL)
+ 344              		.loc 1 72 2 is_stmt 1 discriminator 4 view .LVU111
+  72:emulator/snapshot/snapshot.c ****     if (add_header != NULL)
+ 345              		.loc 1 72 20 is_stmt 0 discriminator 4 view .LVU112
+ 346 0072 237F     		ldrb	r3, [r4, #28]	@ zero_extendqisi2
+  72:emulator/snapshot/snapshot.c ****     if (add_header != NULL)
+ 347              		.loc 1 72 12 discriminator 4 view .LVU113
+ 348 0074 C362     		str	r3, [r0, #44]
+  73:emulator/snapshot/snapshot.c ****     {
+ 349              		.loc 1 73 5 is_stmt 1 discriminator 4 view .LVU114
+  73:emulator/snapshot/snapshot.c ****     {
+ 350              		.loc 1 73 8 is_stmt 0 discriminator 4 view .LVU115
+ 351 0076 45B1     		cbz	r5, .L18
+  75:emulator/snapshot/snapshot.c ****     }
+ 352              		.loc 1 75 6 is_stmt 1 view .LVU116
+  75:emulator/snapshot/snapshot.c ****     }
+ 353              		.loc 1 75 28 is_stmt 0 view .LVU117
+ 354 0078 6B88     		ldrh	r3, [r5, #2]	@ unaligned
+  75:emulator/snapshot/snapshot.c ****     }
+ 355              		.loc 1 75 16 view .LVU118
+ 356 007a 4362     		str	r3, [r0, #36]
+ 357              	.L19:
+  80:emulator/snapshot/snapshot.c **** }
+ 358              		.loc 1 80 5 is_stmt 1 view .LVU119
+ 359 007c C1F34200 		ubfx	r0, r1, #1, #3
+ 360              	.LVL28:
+  80:emulator/snapshot/snapshot.c **** }
+ 361              		.loc 1 80 5 is_stmt 0 view .LVU120
+ 362 0080 FFF7FEFF 		bl	screen_draw_border
+ 363              	.LVL29:
+  81:emulator/snapshot/snapshot.c **** 
+ 364              		.loc 1 81 1 view .LVU121
+ 365 0084 38BD     		pop	{r3, r4, r5, pc}
+ 366              	.LVL30:
+ 367              	.L21:
+  54:emulator/snapshot/snapshot.c **** 
+ 368              		.loc 1 54 13 view .LVU122
+ 369 0086 0123     		movs	r3, #1
+ 370 0088 C2E7     		b	.L17
+ 371              	.L18:
+  78:emulator/snapshot/snapshot.c ****     }
+ 372              		.loc 1 78 9 is_stmt 1 view .LVU123
+  78:emulator/snapshot/snapshot.c ****     }
+ 373              		.loc 1 78 25 is_stmt 0 view .LVU124
+ 374 008a E388     		ldrh	r3, [r4, #6]	@ unaligned
+  78:emulator/snapshot/snapshot.c ****     }
+ 375              		.loc 1 78 17 view .LVU125
+ 376 008c 4362     		str	r3, [r0, #36]
+ 377 008e F5E7     		b	.L19
+ARM GAS  /tmp/ccXgBjov.s 			page 12
+
+
+ 378              		.cfi_endproc
+ 379              	.LFE0:
+ 381              		.section	.rodata.snapshot_load.str1.4,"aMS",%progbits,1
+ 382              		.align	2
+ 383              	.LC2:
+ 384 0000 3132386B 		.ascii	"128k not supported\015\012\000"
+ 384      206E6F74 
+ 384      20737570 
+ 384      706F7274 
+ 384      65640D0A 
+ 385 0015 000000   		.align	2
+ 386              	.LC3:
+ 387 0018 41646420 		.ascii	"Add length = %d\015\012\000"
+ 387      6C656E67 
+ 387      7468203D 
+ 387      2025640D 
+ 387      0A00
+ 388 002a 0000     		.align	2
+ 389              	.LC4:
+ 390 002c 496E7661 		.ascii	"Invalid add header len\015\012\000"
+ 390      6C696420 
+ 390      61646420 
+ 390      68656164 
+ 390      6572206C 
+ 391 0045 000000   		.align	2
+ 392              	.LC5:
+ 393 0048 536E6170 		.ascii	"Snapshot header version %d offset %d buffer_len %d\015"
+ 393      73686F74 
+ 393      20686561 
+ 393      64657220 
+ 393      76657273 
+ 394 007b 0A00     		.ascii	"\012\000"
+ 395              		.section	.text.snapshot_load,"ax",%progbits
+ 396              		.align	1
+ 397              		.global	snapshot_load
+ 398              		.syntax unified
+ 399              		.thumb
+ 400              		.thumb_func
+ 401              		.fpu fpv4-sp-d16
+ 403              	snapshot_load:
+ 404              	.LVL31:
+ 405              	.LFB2:
+ 129:emulator/snapshot/snapshot.c **** extern uint8_t load;
+ 130:emulator/snapshot/snapshot.c **** bool snapshot_load(const uint8_t *buffer, uint16_t buffer_len)
+ 131:emulator/snapshot/snapshot.c **** {
+ 406              		.loc 1 131 1 is_stmt 1 view -0
+ 407              		.cfi_startproc
+ 408              		@ args = 0, pretend = 0, frame = 0
+ 409              		@ frame_needed = 0, uses_anonymous_args = 0
+ 410              		.loc 1 131 1 is_stmt 0 view .LVU127
+ 411 0000 2DE9F843 		push	{r3, r4, r5, r6, r7, r8, r9, lr}
+ 412              	.LCFI2:
+ 413              		.cfi_def_cfa_offset 32
+ 414              		.cfi_offset 3, -32
+ 415              		.cfi_offset 4, -28
+ 416              		.cfi_offset 5, -24
+ 417              		.cfi_offset 6, -20
+ARM GAS  /tmp/ccXgBjov.s 			page 13
+
+
+ 418              		.cfi_offset 7, -16
+ 419              		.cfi_offset 8, -12
+ 420              		.cfi_offset 9, -8
+ 421              		.cfi_offset 14, -4
+ 422 0004 0546     		mov	r5, r0
+ 423 0006 0E46     		mov	r6, r1
+ 132:emulator/snapshot/snapshot.c ****     load = 0;
+ 424              		.loc 1 132 5 is_stmt 1 view .LVU128
+ 425              		.loc 1 132 10 is_stmt 0 view .LVU129
+ 426 0008 374B     		ldr	r3, .L40
+ 427 000a 0022     		movs	r2, #0
+ 428 000c 1A70     		strb	r2, [r3]
+ 133:emulator/snapshot/snapshot.c ****     uint8_t file_version = 1;
+ 429              		.loc 1 133 5 is_stmt 1 view .LVU130
+ 430              	.LVL32:
+ 134:emulator/snapshot/snapshot.c ****     const snapshot_header_t *header = (const snapshot_header_t *) buffer;
+ 431              		.loc 1 134 5 view .LVU131
+ 135:emulator/snapshot/snapshot.c ****     uint16_t offset = sizeof(*header);
+ 432              		.loc 1 135 5 view .LVU132
+ 136:emulator/snapshot/snapshot.c **** 
+ 137:emulator/snapshot/snapshot.c ****     if (header->version == SNAPSHOT_FILE_VERSION_VALID)
+ 433              		.loc 1 137 5 view .LVU133
+ 434              		.loc 1 137 15 is_stmt 0 view .LVU134
+ 435 000e C388     		ldrh	r3, [r0, #6]	@ unaligned
+ 436              		.loc 1 137 8 view .LVU135
+ 437 0010 13B3     		cbz	r3, .L23
+ 138:emulator/snapshot/snapshot.c ****     {
+ 139:emulator/snapshot/snapshot.c ****         file_version = 2;
+ 140:emulator/snapshot/snapshot.c ****     }
+ 141:emulator/snapshot/snapshot.c **** 
+ 142:emulator/snapshot/snapshot.c ****     const snapshot_add_header_t *add_header = (const snapshot_add_header_t *) &buffer[offset];
+ 438              		.loc 1 142 5 is_stmt 1 view .LVU136
+ 439              		.loc 1 142 34 is_stmt 0 view .LVU137
+ 440 0012 00F11E07 		add	r7, r0, #30
+ 441              	.LVL33:
+ 143:emulator/snapshot/snapshot.c ****     if (file_version != 1)
+ 442              		.loc 1 143 5 is_stmt 1 view .LVU138
+ 135:emulator/snapshot/snapshot.c **** 
+ 443              		.loc 1 135 14 is_stmt 0 view .LVU139
+ 444 0016 4FF01E08 		mov	r8, #30
+ 133:emulator/snapshot/snapshot.c ****     const snapshot_header_t *header = (const snapshot_header_t *) buffer;
+ 445              		.loc 1 133 13 view .LVU140
+ 446 001a 4FF00109 		mov	r9, #1
+ 447              	.LVL34:
+ 448              	.L24:
+ 144:emulator/snapshot/snapshot.c ****     {
+ 145:emulator/snapshot/snapshot.c ****         const snapshot_add_header_t *add_header = (const snapshot_add_header_t *) &buffer[offset];
+ 146:emulator/snapshot/snapshot.c ****         if (add_header->hardware_mode > HARDWARE_MODE_1)
+ 147:emulator/snapshot/snapshot.c ****         {
+ 148:emulator/snapshot/snapshot.c ****             logger("128k not supported\r\n");
+ 149:emulator/snapshot/snapshot.c ****             return false;
+ 150:emulator/snapshot/snapshot.c ****         }
+ 151:emulator/snapshot/snapshot.c **** 
+ 152:emulator/snapshot/snapshot.c ****         logger("Add length = %d\r\n", add_header->header_len);
+ 153:emulator/snapshot/snapshot.c **** 		if(add_header->header_len == 23)
+ 154:emulator/snapshot/snapshot.c **** 		{
+ 155:emulator/snapshot/snapshot.c **** 			file_version = 2;
+ARM GAS  /tmp/ccXgBjov.s 			page 14
+
+
+ 156:emulator/snapshot/snapshot.c **** 		}
+ 157:emulator/snapshot/snapshot.c **** 		else if(add_header->header_len == 54)
+ 158:emulator/snapshot/snapshot.c **** 		{
+ 159:emulator/snapshot/snapshot.c **** 			file_version = 3;
+ 160:emulator/snapshot/snapshot.c **** 		}
+ 161:emulator/snapshot/snapshot.c **** 		else if(add_header->header_len == 55)
+ 162:emulator/snapshot/snapshot.c **** 		{
+ 163:emulator/snapshot/snapshot.c **** 			file_version = 4;
+ 164:emulator/snapshot/snapshot.c **** 		}
+ 165:emulator/snapshot/snapshot.c ****         else
+ 166:emulator/snapshot/snapshot.c ****         {
+ 167:emulator/snapshot/snapshot.c ****             logger("Invalid add header len\r\n");
+ 168:emulator/snapshot/snapshot.c ****             return false;   
+ 169:emulator/snapshot/snapshot.c ****         }
+ 170:emulator/snapshot/snapshot.c **** 
+ 171:emulator/snapshot/snapshot.c ****         offset += add_header->header_len +2;
+ 172:emulator/snapshot/snapshot.c ****     }
+ 173:emulator/snapshot/snapshot.c **** 
+ 174:emulator/snapshot/snapshot.c ****     logger("Snapshot header version %d offset %d buffer_len %d\r\n", file_version, offset, buffer_l
+ 449              		.loc 1 174 5 is_stmt 1 view .LVU141
+ 450 001e 3346     		mov	r3, r6
+ 451 0020 4246     		mov	r2, r8
+ 452 0022 4946     		mov	r1, r9
+ 453 0024 3148     		ldr	r0, .L40+4
+ 454 0026 FFF7FEFF 		bl	logger
+ 455              	.LVL35:
+ 175:emulator/snapshot/snapshot.c **** 
+ 176:emulator/snapshot/snapshot.c ****     const block_info_t *mem_block = (const block_info_t *) &buffer[offset];    
+ 456              		.loc 1 176 5 view .LVU142
+ 457              		.loc 1 176 25 is_stmt 0 view .LVU143
+ 458 002a 05EB0804 		add	r4, r5, r8
+ 459              	.LVL36:
+ 177:emulator/snapshot/snapshot.c ****     if (file_version == 1)
+ 460              		.loc 1 177 5 is_stmt 1 view .LVU144
+ 461              		.loc 1 177 8 is_stmt 0 view .LVU145
+ 462 002e B9F1010F 		cmp	r9, #1
+ 463 0032 4AD1     		bne	.L28
+ 178:emulator/snapshot/snapshot.c ****     {
+ 179:emulator/snapshot/snapshot.c ****         add_header = NULL;
+ 464              		.loc 1 179 9 is_stmt 1 view .LVU146
+ 465              	.LVL37:
+ 180:emulator/snapshot/snapshot.c ****         // logger("Snapshot header version %d offset %d buffer_len %d\r\n", file_version, offset, b
+ 181:emulator/snapshot/snapshot.c ****         // while (offset < buffer_len)
+ 182:emulator/snapshot/snapshot.c ****         {
+ 183:emulator/snapshot/snapshot.c ****             snapshot_decompression(&buffer[offset],
+ 466              		.loc 1 183 13 view .LVU147
+ 184:emulator/snapshot/snapshot.c ****                                     PAGE_TYPE_8,
+ 185:emulator/snapshot/snapshot.c ****                                     buffer_len - offset,
+ 186:emulator/snapshot/snapshot.c ****                                     header->flags1.compressed ? true : false);
+ 467              		.loc 1 186 63 is_stmt 0 view .LVU148
+ 468 0034 2B7B     		ldrb	r3, [r5, #12]	@ zero_extendqisi2
+ 183:emulator/snapshot/snapshot.c ****                                     PAGE_TYPE_8,
+ 469              		.loc 1 183 13 view .LVU149
+ 470 0036 A6EB0802 		sub	r2, r6, r8
+ 471 003a C3F34013 		ubfx	r3, r3, #5, #1
+ 472 003e 92B2     		uxth	r2, r2
+ 473 0040 0821     		movs	r1, #8
+ARM GAS  /tmp/ccXgBjov.s 			page 15
+
+
+ 474 0042 2046     		mov	r0, r4
+ 475 0044 FFF7FEFF 		bl	snapshot_decompression
+ 476              	.LVL38:
+ 179:emulator/snapshot/snapshot.c ****         // logger("Snapshot header version %d offset %d buffer_len %d\r\n", file_version, offset, b
+ 477              		.loc 1 179 20 view .LVU150
+ 478 0048 0027     		movs	r7, #0
+ 479              	.LVL39:
+ 480              	.L29:
+ 187:emulator/snapshot/snapshot.c **** 
+ 188:emulator/snapshot/snapshot.c ****             // offset += mem_block->len + sizeof(*mem_block);
+ 189:emulator/snapshot/snapshot.c ****             // mem_block = (const block_info_t *) &buffer[offset];
+ 190:emulator/snapshot/snapshot.c ****         }
+ 191:emulator/snapshot/snapshot.c ****     }
+ 192:emulator/snapshot/snapshot.c ****     else
+ 193:emulator/snapshot/snapshot.c ****     {
+ 194:emulator/snapshot/snapshot.c ****         while (offset < buffer_len)
+ 195:emulator/snapshot/snapshot.c ****         {
+ 196:emulator/snapshot/snapshot.c ****             if (IS_DATA_COMPRESSED(mem_block->len))
+ 197:emulator/snapshot/snapshot.c ****             {
+ 198:emulator/snapshot/snapshot.c ****                 snapshot_decompression(mem_block->data, mem_block->page_type,
+ 199:emulator/snapshot/snapshot.c ****                                        mem_block->len, true);
+ 200:emulator/snapshot/snapshot.c ****             }
+ 201:emulator/snapshot/snapshot.c ****             else
+ 202:emulator/snapshot/snapshot.c ****             {
+ 203:emulator/snapshot/snapshot.c ****                 snapshot_decompression(mem_block->data, mem_block->page_type,
+ 204:emulator/snapshot/snapshot.c ****                                        MEM_PAGE_FULL_SIZE, false);
+ 205:emulator/snapshot/snapshot.c ****             }
+ 206:emulator/snapshot/snapshot.c ****             offset += mem_block->len + sizeof(*mem_block);
+ 207:emulator/snapshot/snapshot.c ****             mem_block = (const block_info_t *) &buffer[offset];
+ 208:emulator/snapshot/snapshot.c ****         }
+ 209:emulator/snapshot/snapshot.c ****         
+ 210:emulator/snapshot/snapshot.c ****     }
+ 211:emulator/snapshot/snapshot.c **** 
+ 212:emulator/snapshot/snapshot.c ****     snapshot_set_state(header, add_header);
+ 481              		.loc 1 212 5 is_stmt 1 view .LVU151
+ 482 004a 3946     		mov	r1, r7
+ 483 004c 2846     		mov	r0, r5
+ 484 004e FFF7FEFF 		bl	snapshot_set_state
+ 485              	.LVL40:
+ 213:emulator/snapshot/snapshot.c **** 
+ 214:emulator/snapshot/snapshot.c ****     // const block_info_t *mem_block = (const block_info_t *) &buffer[offset];
+ 215:emulator/snapshot/snapshot.c ****     // while (mem_block->page_type == PAGE_TYPE_4 ||
+ 216:emulator/snapshot/snapshot.c ****     //        mem_block->page_type == PAGE_TYPE_5 ||
+ 217:emulator/snapshot/snapshot.c ****     //        mem_block->page_type == PAGE_TYPE_8)
+ 218:emulator/snapshot/snapshot.c ****     // {
+ 219:emulator/snapshot/snapshot.c ****     //         snapshot_decompression(mem_block);
+ 220:emulator/snapshot/snapshot.c **** 
+ 221:emulator/snapshot/snapshot.c ****     //         offset += mem_block->len + sizeof(*mem_block);
+ 222:emulator/snapshot/snapshot.c ****     //         mem_block = (const block_info_t *) &buffer[offset];
+ 223:emulator/snapshot/snapshot.c ****     // }
+ 224:emulator/snapshot/snapshot.c **** 
+ 225:emulator/snapshot/snapshot.c ****     return true;
+ 486              		.loc 1 225 5 view .LVU152
+ 487              		.loc 1 225 12 is_stmt 0 view .LVU153
+ 488 0052 0120     		movs	r0, #1
+ 489              	.LVL41:
+ 490              	.L26:
+ARM GAS  /tmp/ccXgBjov.s 			page 16
+
+
+ 226:emulator/snapshot/snapshot.c **** }...
+ 491              		.loc 1 226 1 view .LVU154
+ 492 0054 BDE8F883 		pop	{r3, r4, r5, r6, r7, r8, r9, pc}
+ 493              	.LVL42:
+ 494              	.L23:
+ 139:emulator/snapshot/snapshot.c ****         file_version = 2;
+ 495              		.loc 1 139 9 is_stmt 1 view .LVU155
+ 142:emulator/snapshot/snapshot.c ****     const snapshot_add_header_t *add_header = (const snapshot_add_header_t *) &buffer[offset];
+ 496              		.loc 1 142 5 view .LVU156
+ 142:emulator/snapshot/snapshot.c ****     const snapshot_add_header_t *add_header = (const snapshot_add_header_t *) &buffer[offset];
+ 497              		.loc 1 142 34 is_stmt 0 view .LVU157
+ 498 0058 00F11E07 		add	r7, r0, #30
+ 499              	.LVL43:
+ 143:emulator/snapshot/snapshot.c ****     if (file_version != 1)
+ 500              		.loc 1 143 5 is_stmt 1 view .LVU158
+ 501              	.LBB7:
+ 145:emulator/snapshot/snapshot.c ****         const snapshot_add_header_t *add_header = (const snapshot_add_header_t *) &buffer[offset];
+ 502              		.loc 1 145 9 view .LVU159
+ 146:emulator/snapshot/snapshot.c ****         if (add_header->hardware_mode > HARDWARE_MODE_1)
+ 503              		.loc 1 146 9 view .LVU160
+ 146:emulator/snapshot/snapshot.c ****         if (add_header->hardware_mode > HARDWARE_MODE_1)
+ 504              		.loc 1 146 23 is_stmt 0 view .LVU161
+ 505 005c 90F82230 		ldrb	r3, [r0, #34]	@ zero_extendqisi2
+ 146:emulator/snapshot/snapshot.c ****         if (add_header->hardware_mode > HARDWARE_MODE_1)
+ 506              		.loc 1 146 12 view .LVU162
+ 507 0060 012B     		cmp	r3, #1
+ 508 0062 11D8     		bhi	.L37
+ 152:emulator/snapshot/snapshot.c ****         logger("Add length = %d\r\n", add_header->header_len);
+ 509              		.loc 1 152 9 is_stmt 1 view .LVU163
+ 510 0064 C18B     		ldrh	r1, [r0, #30]	@ unaligned
+ 511              	.LVL44:
+ 152:emulator/snapshot/snapshot.c ****         logger("Add length = %d\r\n", add_header->header_len);
+ 512              		.loc 1 152 9 is_stmt 0 view .LVU164
+ 513 0066 2248     		ldr	r0, .L40+8
+ 514              	.LVL45:
+ 152:emulator/snapshot/snapshot.c ****         logger("Add length = %d\r\n", add_header->header_len);
+ 515              		.loc 1 152 9 view .LVU165
+ 516 0068 FFF7FEFF 		bl	logger
+ 517              	.LVL46:
+ 153:emulator/snapshot/snapshot.c **** 		if(add_header->header_len == 23)
+ 518              		.loc 1 153 3 is_stmt 1 view .LVU166
+ 153:emulator/snapshot/snapshot.c **** 		if(add_header->header_len == 23)
+ 519              		.loc 1 153 16 is_stmt 0 view .LVU167
+ 520 006c B5F81E80 		ldrh	r8, [r5, #30]	@ unaligned
+ 153:emulator/snapshot/snapshot.c **** 		if(add_header->header_len == 23)
+ 521              		.loc 1 153 5 view .LVU168
+ 522 0070 B8F1170F 		cmp	r8, #23
+ 523 0074 12D0     		beq	.L33
+ 157:emulator/snapshot/snapshot.c **** 		else if(add_header->header_len == 54)
+ 524              		.loc 1 157 8 is_stmt 1 view .LVU169
+ 157:emulator/snapshot/snapshot.c **** 		else if(add_header->header_len == 54)
+ 525              		.loc 1 157 10 is_stmt 0 view .LVU170
+ 526 0076 B8F1360F 		cmp	r8, #54
+ 527 007a 16D0     		beq	.L34
+ 161:emulator/snapshot/snapshot.c **** 		else if(add_header->header_len == 55)
+ 528              		.loc 1 161 8 is_stmt 1 view .LVU171
+ 161:emulator/snapshot/snapshot.c **** 		else if(add_header->header_len == 55)
+ARM GAS  /tmp/ccXgBjov.s 			page 17
+
+
+ 529              		.loc 1 161 10 is_stmt 0 view .LVU172
+ 530 007c B8F1370F 		cmp	r8, #55
+ 531 0080 07D1     		bne	.L38
+ 163:emulator/snapshot/snapshot.c **** 			file_version = 4;
+ 532              		.loc 1 163 17 view .LVU173
+ 533 0082 4FF00409 		mov	r9, #4
+ 534 0086 0BE0     		b	.L27
+ 535              	.LVL47:
+ 536              	.L37:
+ 148:emulator/snapshot/snapshot.c ****             logger("128k not supported\r\n");
+ 537              		.loc 1 148 13 is_stmt 1 view .LVU174
+ 538 0088 1A48     		ldr	r0, .L40+12
+ 539              	.LVL48:
+ 148:emulator/snapshot/snapshot.c ****             logger("128k not supported\r\n");
+ 540              		.loc 1 148 13 is_stmt 0 view .LVU175
+ 541 008a FFF7FEFF 		bl	logger
+ 542              	.LVL49:
+ 149:emulator/snapshot/snapshot.c ****             return false;
+ 543              		.loc 1 149 13 is_stmt 1 view .LVU176
+ 149:emulator/snapshot/snapshot.c ****             return false;
+ 544              		.loc 1 149 20 is_stmt 0 view .LVU177
+ 545 008e 0020     		movs	r0, #0
+ 546 0090 E0E7     		b	.L26
+ 547              	.L38:
+ 167:emulator/snapshot/snapshot.c ****             logger("Invalid add header len\r\n");
+ 548              		.loc 1 167 13 is_stmt 1 view .LVU178
+ 549 0092 1948     		ldr	r0, .L40+16
+ 550 0094 FFF7FEFF 		bl	logger
+ 551              	.LVL50:
+ 168:emulator/snapshot/snapshot.c ****             return false;   
+ 552              		.loc 1 168 13 view .LVU179
+ 168:emulator/snapshot/snapshot.c ****             return false;   
+ 553              		.loc 1 168 20 is_stmt 0 view .LVU180
+ 554 0098 0020     		movs	r0, #0
+ 555 009a DBE7     		b	.L26
+ 556              	.L33:
+ 155:emulator/snapshot/snapshot.c **** 			file_version = 2;
+ 557              		.loc 1 155 17 view .LVU181
+ 558 009c 4FF00209 		mov	r9, #2
+ 559              	.L27:
+ 560              	.LVL51:
+ 171:emulator/snapshot/snapshot.c ****         offset += add_header->header_len +2;
+ 561              		.loc 1 171 9 is_stmt 1 view .LVU182
+ 171:emulator/snapshot/snapshot.c ****         offset += add_header->header_len +2;
+ 562              		.loc 1 171 16 is_stmt 0 view .LVU183
+ 563 00a0 08F12002 		add	r2, r8, #32
+ 564 00a4 1FFA82F8 		uxth	r8, r2
+ 565              	.LVL52:
+ 171:emulator/snapshot/snapshot.c ****         offset += add_header->header_len +2;
+ 566              		.loc 1 171 16 view .LVU184
+ 567 00a8 B9E7     		b	.L24
+ 568              	.LVL53:
+ 569              	.L34:
+ 159:emulator/snapshot/snapshot.c **** 			file_version = 3;
+ 570              		.loc 1 159 17 view .LVU185
+ 571 00aa 4FF00309 		mov	r9, #3
+ 572 00ae F7E7     		b	.L27
+ARM GAS  /tmp/ccXgBjov.s 			page 18
+
+
+ 573              	.LVL54:
+ 574              	.L39:
+ 159:emulator/snapshot/snapshot.c **** 			file_version = 3;
+ 575              		.loc 1 159 17 view .LVU186
+ 576              	.LBE7:
+ 198:emulator/snapshot/snapshot.c ****                 snapshot_decompression(mem_block->data, mem_block->page_type,
+ 577              		.loc 1 198 17 is_stmt 1 view .LVU187
+ 578 00b0 0123     		movs	r3, #1
+ 579 00b2 A178     		ldrb	r1, [r4, #2]	@ zero_extendqisi2
+ 580 00b4 E01C     		adds	r0, r4, #3
+ 581 00b6 FFF7FEFF 		bl	snapshot_decompression
+ 582              	.LVL55:
+ 583              	.L31:
+ 206:emulator/snapshot/snapshot.c ****             offset += mem_block->len + sizeof(*mem_block);
+ 584              		.loc 1 206 13 view .LVU188
+ 206:emulator/snapshot/snapshot.c ****             offset += mem_block->len + sizeof(*mem_block);
+ 585              		.loc 1 206 32 is_stmt 0 view .LVU189
+ 586 00ba 2288     		ldrh	r2, [r4]	@ unaligned
+ 206:emulator/snapshot/snapshot.c ****             offset += mem_block->len + sizeof(*mem_block);
+ 587              		.loc 1 206 20 view .LVU190
+ 588 00bc 4244     		add	r2, r2, r8
+ 589 00be 92B2     		uxth	r2, r2
+ 590 00c0 0332     		adds	r2, r2, #3
+ 591 00c2 1FFA82F8 		uxth	r8, r2
+ 592              	.LVL56:
+ 207:emulator/snapshot/snapshot.c ****             mem_block = (const block_info_t *) &buffer[offset];
+ 593              		.loc 1 207 13 is_stmt 1 view .LVU191
+ 207:emulator/snapshot/snapshot.c ****             mem_block = (const block_info_t *) &buffer[offset];
+ 594              		.loc 1 207 23 is_stmt 0 view .LVU192
+ 595 00c6 05EB0804 		add	r4, r5, r8
+ 596              	.LVL57:
+ 597              	.L28:
+ 194:emulator/snapshot/snapshot.c ****         while (offset < buffer_len)
+ 598              		.loc 1 194 15 is_stmt 1 view .LVU193
+ 599 00ca B045     		cmp	r8, r6
+ 600 00cc BDD2     		bcs	.L29
+ 196:emulator/snapshot/snapshot.c ****             if (IS_DATA_COMPRESSED(mem_block->len))
+ 601              		.loc 1 196 13 view .LVU194
+ 196:emulator/snapshot/snapshot.c ****             if (IS_DATA_COMPRESSED(mem_block->len))
+ 602              		.loc 1 196 17 is_stmt 0 view .LVU195
+ 603 00ce 2288     		ldrh	r2, [r4]	@ unaligned
+ 196:emulator/snapshot/snapshot.c ****             if (IS_DATA_COMPRESSED(mem_block->len))
+ 604              		.loc 1 196 16 view .LVU196
+ 605 00d0 4FF6FF73 		movw	r3, #65535
+ 606 00d4 9A42     		cmp	r2, r3
+ 607 00d6 EBD1     		bne	.L39
+ 203:emulator/snapshot/snapshot.c ****                 snapshot_decompression(mem_block->data, mem_block->page_type,
+ 608              		.loc 1 203 17 is_stmt 1 view .LVU197
+ 609 00d8 0023     		movs	r3, #0
+ 610 00da 4FF48042 		mov	r2, #16384
+ 611 00de A178     		ldrb	r1, [r4, #2]	@ zero_extendqisi2
+ 612 00e0 E01C     		adds	r0, r4, #3
+ 613 00e2 FFF7FEFF 		bl	snapshot_decompression
+ 614              	.LVL58:
+ 615 00e6 E8E7     		b	.L31
+ 616              	.L41:
+ 617              		.align	2
+ARM GAS  /tmp/ccXgBjov.s 			page 19
+
+
+ 618              	.L40:
+ 619 00e8 00000000 		.word	load
+ 620 00ec 48000000 		.word	.LC5
+ 621 00f0 18000000 		.word	.LC3
+ 622 00f4 00000000 		.word	.LC2
+ 623 00f8 2C000000 		.word	.LC4
+ 624              		.cfi_endproc
+ 625              	.LFE2:
+ 627              		.text
+ 628              	.Letext0:
+ 629              		.file 2 "/usr/lib/gcc/arm-none-eabi/9.2.1/include/stdint.h"
+ 630              		.file 3 "emulator/snapshot/snapshot.h"
+ 631              		.file 4 "emulator/z80emu/z80emu.h"
+ 632              		.file 5 "logger/logger.h"
+ 633              		.file 6 "emulator/mem/mem.h"
+ 634              		.file 7 "emulator/emulator.h"
+ 635              		.file 8 "emulator/video/screen.h"
+ARM GAS  /tmp/ccXgBjov.s 			page 20
+
+
+DEFINED SYMBOLS
+                            *ABS*:0000000000000000 snapshot.c
+     /tmp/ccXgBjov.s:18     .rodata.snapshot_decompression.str1.4:0000000000000000 $d
+     /tmp/ccXgBjov.s:25     .text.snapshot_decompression:0000000000000000 $t
+     /tmp/ccXgBjov.s:32     .text.snapshot_decompression:0000000000000000 snapshot_decompression
+     /tmp/ccXgBjov.s:207    .text.snapshot_decompression:0000000000000098 $d
+     /tmp/ccXgBjov.s:213    .text.snapshot_set_state:0000000000000000 $t
+     /tmp/ccXgBjov.s:219    .text.snapshot_set_state:0000000000000000 snapshot_set_state
+     /tmp/ccXgBjov.s:382    .rodata.snapshot_load.str1.4:0000000000000000 $d
+     /tmp/ccXgBjov.s:396    .text.snapshot_load:0000000000000000 $t
+     /tmp/ccXgBjov.s:403    .text.snapshot_load:0000000000000000 snapshot_load
+     /tmp/ccXgBjov.s:619    .text.snapshot_load:00000000000000e8 $d
+
+UNDEFINED SYMBOLS
+logger
+mem_writebyte
+emulator_cpu_state_get
+screen_draw_border
+load

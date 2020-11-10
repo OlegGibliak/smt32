@@ -1,0 +1,1380 @@
+ARM GAS  /tmp/ccicOIm8.s 			page 1
+
+
+   1              		.cpu cortex-m4
+   2              		.eabi_attribute 27, 1
+   3              		.eabi_attribute 28, 1
+   4              		.eabi_attribute 20, 1
+   5              		.eabi_attribute 21, 1
+   6              		.eabi_attribute 23, 3
+   7              		.eabi_attribute 24, 1
+   8              		.eabi_attribute 25, 1
+   9              		.eabi_attribute 26, 1
+  10              		.eabi_attribute 30, 1
+  11              		.eabi_attribute 34, 1
+  12              		.eabi_attribute 18, 4
+  13              		.file	"input.c"
+  14              		.text
+  15              	.Ltext0:
+  16              		.cfi_sections	.debug_frame
+  17              		.section	.text.input_key_init,"ax",%progbits
+  18              		.align	1
+  19              		.global	input_key_init
+  20              		.arch armv7e-m
+  21              		.syntax unified
+  22              		.thumb
+  23              		.thumb_func
+  24              		.fpu fpv4-sp-d16
+  26              	input_key_init:
+  27              	.LFB0:
+  28              		.file 1 "emulator/input/input.c"
+   1:emulator/input/input.c **** #include "input.h"
+   2:emulator/input/input.c **** #include <string.h>
+   3:emulator/input/input.c **** #include "logger.h"
+   4:emulator/input/input.c **** 
+   5:emulator/input/input.c **** #define KEYS_ROWS       (5)
+   6:emulator/input/input.c **** #define KEYS_COLOMNS    (8)
+   7:emulator/input/input.c **** 
+   8:emulator/input/input.c **** uint8_t load = 0;
+   9:emulator/input/input.c **** static uint8_t keys[KEYS_COLOMNS];
+  10:emulator/input/input.c **** /*
+  11:emulator/input/input.c ****     D0  D1  D2  D3  D4
+  12:emulator/input/input.c **** #7F:SP  SS  M   N   B
+  13:emulator/input/input.c **** #BF:EN  L   K   J   H
+  14:emulator/input/input.c **** #DF:P   O   I   U   Y
+  15:emulator/input/input.c **** #EF:0   9   8   7   6
+  16:emulator/input/input.c **** #F7:1   2   3   4   5
+  17:emulator/input/input.c **** #FB:Q   W   E   R   T
+  18:emulator/input/input.c **** #FD:A   S   D   F   G
+  19:emulator/input/input.c **** #FE:CS  Z   X   C   V
+  20:emulator/input/input.c **** 
+  21:emulator/input/input.c **** SP - SPACE
+  22:emulator/input/input.c **** SS - SYMBOL SHIFT
+  23:emulator/input/input.c **** EN - ENTER
+  24:emulator/input/input.c **** CS - CAPS SHIFT
+  25:emulator/input/input.c **** */
+  26:emulator/input/input.c **** 
+  27:emulator/input/input.c **** void input_key_init(void)
+  28:emulator/input/input.c **** {
+  29              		.loc 1 28 1 view -0
+  30              		.cfi_startproc
+ARM GAS  /tmp/ccicOIm8.s 			page 2
+
+
+  31              		@ args = 0, pretend = 0, frame = 0
+  32              		@ frame_needed = 0, uses_anonymous_args = 0
+  33              		@ link register save eliminated.
+  29:emulator/input/input.c ****     memset(keys, 0xFF, sizeof(keys));
+  34              		.loc 1 29 5 view .LVU1
+  35 0000 024B     		ldr	r3, .L2
+  36 0002 4FF0FF32 		mov	r2, #-1
+  37 0006 1A60     		str	r2, [r3]
+  38 0008 5A60     		str	r2, [r3, #4]
+  30:emulator/input/input.c **** }
+  39              		.loc 1 30 1 is_stmt 0 view .LVU2
+  40 000a 7047     		bx	lr
+  41              	.L3:
+  42              		.align	2
+  43              	.L2:
+  44 000c 00000000 		.word	.LANCHOR0
+  45              		.cfi_endproc
+  46              	.LFE0:
+  48              		.section	.text.input_key_get,"ax",%progbits
+  49              		.align	1
+  50              		.global	input_key_get
+  51              		.syntax unified
+  52              		.thumb
+  53              		.thumb_func
+  54              		.fpu fpv4-sp-d16
+  56              	input_key_get:
+  57              	.LVL0:
+  58              	.LFB127:
+  31:emulator/input/input.c **** #include "stm32f4xx_hal.h"
+  32:emulator/input/input.c **** uint8_t input_key_get(uint8_t addr)
+  33:emulator/input/input.c **** {
+  59              		.loc 1 33 1 is_stmt 1 view -0
+  60              		.cfi_startproc
+  61              		@ args = 0, pretend = 0, frame = 0
+  62              		@ frame_needed = 0, uses_anonymous_args = 0
+  63              		.loc 1 33 1 is_stmt 0 view .LVU4
+  64 0000 10B5     		push	{r4, lr}
+  65              	.LCFI0:
+  66              		.cfi_def_cfa_offset 8
+  67              		.cfi_offset 4, -8
+  68              		.cfi_offset 14, -4
+  69 0002 0446     		mov	r4, r0
+  34:emulator/input/input.c ****     keyboard_scan();
+  70              		.loc 1 34 5 is_stmt 1 view .LVU5
+  71 0004 FFF7FEFF 		bl	keyboard_scan
+  72              	.LVL1:
+  35:emulator/input/input.c ****     
+  36:emulator/input/input.c ****     uint8_t key = 0xFF;
+  73              		.loc 1 36 5 view .LVU6
+  37:emulator/input/input.c ****     switch (addr)
+  74              		.loc 1 37 5 view .LVU7
+  75 0008 FE2C     		cmp	r4, #254
+  76 000a 6AD8     		bhi	.L18
+  77 000c BF2C     		cmp	r4, #191
+  78 000e 24D3     		bcc	.L21
+  79 0010 BF3C     		subs	r4, r4, #191
+  80 0012 3F2C     		cmp	r4, #63
+ARM GAS  /tmp/ccicOIm8.s 			page 3
+
+
+  81 0014 2BD8     		bhi	.L9
+  82 0016 DFE804F0 		tbb	[pc, r4]
+  83              	.L11:
+  84 001a 2C       		.byte	(.L17-.L11)/2
+  85 001b 2A       		.byte	(.L9-.L11)/2
+  86 001c 2A       		.byte	(.L9-.L11)/2
+  87 001d 2A       		.byte	(.L9-.L11)/2
+  88 001e 2A       		.byte	(.L9-.L11)/2
+  89 001f 2A       		.byte	(.L9-.L11)/2
+  90 0020 2A       		.byte	(.L9-.L11)/2
+  91 0021 2A       		.byte	(.L9-.L11)/2
+  92 0022 2A       		.byte	(.L9-.L11)/2
+  93 0023 2A       		.byte	(.L9-.L11)/2
+  94 0024 2A       		.byte	(.L9-.L11)/2
+  95 0025 2A       		.byte	(.L9-.L11)/2
+  96 0026 2A       		.byte	(.L9-.L11)/2
+  97 0027 2A       		.byte	(.L9-.L11)/2
+  98 0028 2A       		.byte	(.L9-.L11)/2
+  99 0029 2A       		.byte	(.L9-.L11)/2
+ 100 002a 2A       		.byte	(.L9-.L11)/2
+ 101 002b 2A       		.byte	(.L9-.L11)/2
+ 102 002c 2A       		.byte	(.L9-.L11)/2
+ 103 002d 2A       		.byte	(.L9-.L11)/2
+ 104 002e 2A       		.byte	(.L9-.L11)/2
+ 105 002f 2A       		.byte	(.L9-.L11)/2
+ 106 0030 2A       		.byte	(.L9-.L11)/2
+ 107 0031 2A       		.byte	(.L9-.L11)/2
+ 108 0032 2A       		.byte	(.L9-.L11)/2
+ 109 0033 2A       		.byte	(.L9-.L11)/2
+ 110 0034 2A       		.byte	(.L9-.L11)/2
+ 111 0035 2A       		.byte	(.L9-.L11)/2
+ 112 0036 2A       		.byte	(.L9-.L11)/2
+ 113 0037 2A       		.byte	(.L9-.L11)/2
+ 114 0038 2A       		.byte	(.L9-.L11)/2
+ 115 0039 2A       		.byte	(.L9-.L11)/2
+ 116 003a 31       		.byte	(.L16-.L11)/2
+ 117 003b 2A       		.byte	(.L9-.L11)/2
+ 118 003c 2A       		.byte	(.L9-.L11)/2
+ 119 003d 2A       		.byte	(.L9-.L11)/2
+ 120 003e 2A       		.byte	(.L9-.L11)/2
+ 121 003f 2A       		.byte	(.L9-.L11)/2
+ 122 0040 2A       		.byte	(.L9-.L11)/2
+ 123 0041 2A       		.byte	(.L9-.L11)/2
+ 124 0042 66       		.byte	(.L19-.L11)/2
+ 125 0043 2A       		.byte	(.L9-.L11)/2
+ 126 0044 2A       		.byte	(.L9-.L11)/2
+ 127 0045 2A       		.byte	(.L9-.L11)/2
+ 128 0046 2A       		.byte	(.L9-.L11)/2
+ 129 0047 2A       		.byte	(.L9-.L11)/2
+ 130 0048 2A       		.byte	(.L9-.L11)/2
+ 131 0049 2A       		.byte	(.L9-.L11)/2
+ 132 004a 36       		.byte	(.L15-.L11)/2
+ 133 004b 2A       		.byte	(.L9-.L11)/2
+ 134 004c 2A       		.byte	(.L9-.L11)/2
+ 135 004d 2A       		.byte	(.L9-.L11)/2
+ 136 004e 2A       		.byte	(.L9-.L11)/2
+ 137 004f 2A       		.byte	(.L9-.L11)/2
+ARM GAS  /tmp/ccicOIm8.s 			page 4
+
+
+ 138 0050 2A       		.byte	(.L9-.L11)/2
+ 139 0051 2A       		.byte	(.L9-.L11)/2
+ 140 0052 3B       		.byte	(.L14-.L11)/2
+ 141 0053 2A       		.byte	(.L9-.L11)/2
+ 142 0054 2A       		.byte	(.L9-.L11)/2
+ 143 0055 2A       		.byte	(.L9-.L11)/2
+ 144 0056 40       		.byte	(.L13-.L11)/2
+ 145 0057 2A       		.byte	(.L9-.L11)/2
+ 146 0058 45       		.byte	(.L12-.L11)/2
+ 147 0059 4A       		.byte	(.L10-.L11)/2
+ 148              		.p2align 1
+ 149              	.L21:
+ 150 005a 6CB3     		cbz	r4, .L7
+ 151 005c 7F2C     		cmp	r4, #127
+ 152 005e 04D1     		bne	.L22
+  38:emulator/input/input.c ****     {
+  39:emulator/input/input.c ****         case 0x7F: key = keys[0]; keys[0] = 0xFF; break;
+ 153              		.loc 1 39 20 view .LVU8
+ 154              		.loc 1 39 24 is_stmt 0 view .LVU9
+ 155 0060 224B     		ldr	r3, .L23
+ 156 0062 1878     		ldrb	r0, [r3]	@ zero_extendqisi2
+ 157              	.LVL2:
+ 158              		.loc 1 39 35 is_stmt 1 view .LVU10
+ 159              		.loc 1 39 43 is_stmt 0 view .LVU11
+ 160 0064 FF22     		movs	r2, #255
+ 161 0066 1A70     		strb	r2, [r3]
+ 162              		.loc 1 39 51 is_stmt 1 view .LVU12
+ 163              	.LVL3:
+ 164              	.L5:
+  40:emulator/input/input.c ****         case 0xBF: key = keys[1]; keys[1] = 0xFF; break;
+  41:emulator/input/input.c ****         case 0xDF: key = keys[2]; keys[2] = 0xFF; break;
+  42:emulator/input/input.c ****         case 0xEF: key = keys[3]; keys[3] = 0xFF; break;
+  43:emulator/input/input.c ****         case 0xF7: key = keys[4]; keys[4] = 0xFF; break;
+  44:emulator/input/input.c ****         case 0xFB: key = keys[5]; keys[5] = 0xFF; break;
+  45:emulator/input/input.c ****         case 0xFD: key = keys[6]; keys[6] = 0xFF; break;
+  46:emulator/input/input.c ****         case 0xFE: key = keys[7]; keys[7] = 0xFF; break;
+  47:emulator/input/input.c **** 
+  48:emulator/input/input.c ****         case 0xE7: key = 0x00; break;
+  49:emulator/input/input.c ****         case 0x00:
+  50:emulator/input/input.c **** 			{
+  51:emulator/input/input.c **** 				key =  keys[7];
+  52:emulator/input/input.c **** 				key &= keys[6];
+  53:emulator/input/input.c **** 				key &= keys[5];
+  54:emulator/input/input.c **** 				key &= keys[4];
+  55:emulator/input/input.c **** 				key &= keys[3];
+  56:emulator/input/input.c **** 				key &= keys[2];
+  57:emulator/input/input.c **** 				key &= keys[1];
+  58:emulator/input/input.c **** 				key &= keys[0];
+  59:emulator/input/input.c ****                 memset(keys, 0xFF, sizeof(keys));
+  60:emulator/input/input.c ****                 break;
+  61:emulator/input/input.c **** 			}
+  62:emulator/input/input.c ****         default:
+  63:emulator/input/input.c ****             {
+  64:emulator/input/input.c ****                 // logger("%s %02X\r\n", __func__, addr);
+  65:emulator/input/input.c ****                 break;
+  66:emulator/input/input.c ****             }
+  67:emulator/input/input.c ****     }
+ARM GAS  /tmp/ccicOIm8.s 			page 5
+
+
+  68:emulator/input/input.c ****     // if (key != 0xFF)
+  69:emulator/input/input.c ****     //     HAL_Delay(20);
+  70:emulator/input/input.c ****     return key;
+ 165              		.loc 1 70 5 view .LVU13
+  71:emulator/input/input.c **** }
+ 166              		.loc 1 71 1 is_stmt 0 view .LVU14
+ 167 0068 10BD     		pop	{r4, pc}
+ 168              	.LVL4:
+ 169              	.L22:
+  37:emulator/input/input.c ****     {
+ 170              		.loc 1 37 5 view .LVU15
+ 171 006a FF20     		movs	r0, #255
+ 172 006c FCE7     		b	.L5
+ 173              	.L9:
+ 174 006e FF20     		movs	r0, #255
+ 175 0070 FAE7     		b	.L5
+ 176              	.L17:
+  40:emulator/input/input.c ****         case 0xBF: key = keys[1]; keys[1] = 0xFF; break;
+ 177              		.loc 1 40 20 is_stmt 1 view .LVU16
+  40:emulator/input/input.c ****         case 0xBF: key = keys[1]; keys[1] = 0xFF; break;
+ 178              		.loc 1 40 24 is_stmt 0 view .LVU17
+ 179 0072 1E4B     		ldr	r3, .L23
+ 180 0074 5878     		ldrb	r0, [r3, #1]	@ zero_extendqisi2
+ 181              	.LVL5:
+  40:emulator/input/input.c ****         case 0xBF: key = keys[1]; keys[1] = 0xFF; break;
+ 182              		.loc 1 40 35 is_stmt 1 view .LVU18
+  40:emulator/input/input.c ****         case 0xBF: key = keys[1]; keys[1] = 0xFF; break;
+ 183              		.loc 1 40 43 is_stmt 0 view .LVU19
+ 184 0076 FF22     		movs	r2, #255
+ 185 0078 5A70     		strb	r2, [r3, #1]
+  40:emulator/input/input.c ****         case 0xBF: key = keys[1]; keys[1] = 0xFF; break;
+ 186              		.loc 1 40 51 is_stmt 1 view .LVU20
+  40:emulator/input/input.c ****         case 0xBF: key = keys[1]; keys[1] = 0xFF; break;
+ 187              		.loc 1 40 9 is_stmt 0 view .LVU21
+ 188 007a F5E7     		b	.L5
+ 189              	.LVL6:
+ 190              	.L16:
+  41:emulator/input/input.c ****         case 0xEF: key = keys[3]; keys[3] = 0xFF; break;
+ 191              		.loc 1 41 20 is_stmt 1 view .LVU22
+  41:emulator/input/input.c ****         case 0xEF: key = keys[3]; keys[3] = 0xFF; break;
+ 192              		.loc 1 41 24 is_stmt 0 view .LVU23
+ 193 007c 1B4B     		ldr	r3, .L23
+ 194 007e 9878     		ldrb	r0, [r3, #2]	@ zero_extendqisi2
+ 195              	.LVL7:
+  41:emulator/input/input.c ****         case 0xEF: key = keys[3]; keys[3] = 0xFF; break;
+ 196              		.loc 1 41 35 is_stmt 1 view .LVU24
+  41:emulator/input/input.c ****         case 0xEF: key = keys[3]; keys[3] = 0xFF; break;
+ 197              		.loc 1 41 43 is_stmt 0 view .LVU25
+ 198 0080 FF22     		movs	r2, #255
+ 199 0082 9A70     		strb	r2, [r3, #2]
+  41:emulator/input/input.c ****         case 0xEF: key = keys[3]; keys[3] = 0xFF; break;
+ 200              		.loc 1 41 51 is_stmt 1 view .LVU26
+  41:emulator/input/input.c ****         case 0xEF: key = keys[3]; keys[3] = 0xFF; break;
+ 201              		.loc 1 41 9 is_stmt 0 view .LVU27
+ 202 0084 F0E7     		b	.L5
+ 203              	.LVL8:
+ 204              	.L15:
+ARM GAS  /tmp/ccicOIm8.s 			page 6
+
+
+  42:emulator/input/input.c ****         case 0xF7: key = keys[4]; keys[4] = 0xFF; break;
+ 205              		.loc 1 42 20 is_stmt 1 view .LVU28
+  42:emulator/input/input.c ****         case 0xF7: key = keys[4]; keys[4] = 0xFF; break;
+ 206              		.loc 1 42 24 is_stmt 0 view .LVU29
+ 207 0086 194B     		ldr	r3, .L23
+ 208 0088 D878     		ldrb	r0, [r3, #3]	@ zero_extendqisi2
+ 209              	.LVL9:
+  42:emulator/input/input.c ****         case 0xF7: key = keys[4]; keys[4] = 0xFF; break;
+ 210              		.loc 1 42 35 is_stmt 1 view .LVU30
+  42:emulator/input/input.c ****         case 0xF7: key = keys[4]; keys[4] = 0xFF; break;
+ 211              		.loc 1 42 43 is_stmt 0 view .LVU31
+ 212 008a FF22     		movs	r2, #255
+ 213 008c DA70     		strb	r2, [r3, #3]
+  42:emulator/input/input.c ****         case 0xF7: key = keys[4]; keys[4] = 0xFF; break;
+ 214              		.loc 1 42 51 is_stmt 1 view .LVU32
+  42:emulator/input/input.c ****         case 0xF7: key = keys[4]; keys[4] = 0xFF; break;
+ 215              		.loc 1 42 9 is_stmt 0 view .LVU33
+ 216 008e EBE7     		b	.L5
+ 217              	.LVL10:
+ 218              	.L14:
+  43:emulator/input/input.c ****         case 0xFB: key = keys[5]; keys[5] = 0xFF; break;
+ 219              		.loc 1 43 20 is_stmt 1 view .LVU34
+  43:emulator/input/input.c ****         case 0xFB: key = keys[5]; keys[5] = 0xFF; break;
+ 220              		.loc 1 43 24 is_stmt 0 view .LVU35
+ 221 0090 164B     		ldr	r3, .L23
+ 222 0092 1879     		ldrb	r0, [r3, #4]	@ zero_extendqisi2
+ 223              	.LVL11:
+  43:emulator/input/input.c ****         case 0xFB: key = keys[5]; keys[5] = 0xFF; break;
+ 224              		.loc 1 43 35 is_stmt 1 view .LVU36
+  43:emulator/input/input.c ****         case 0xFB: key = keys[5]; keys[5] = 0xFF; break;
+ 225              		.loc 1 43 43 is_stmt 0 view .LVU37
+ 226 0094 FF22     		movs	r2, #255
+ 227 0096 1A71     		strb	r2, [r3, #4]
+  43:emulator/input/input.c ****         case 0xFB: key = keys[5]; keys[5] = 0xFF; break;
+ 228              		.loc 1 43 51 is_stmt 1 view .LVU38
+  43:emulator/input/input.c ****         case 0xFB: key = keys[5]; keys[5] = 0xFF; break;
+ 229              		.loc 1 43 9 is_stmt 0 view .LVU39
+ 230 0098 E6E7     		b	.L5
+ 231              	.LVL12:
+ 232              	.L13:
+  44:emulator/input/input.c ****         case 0xFD: key = keys[6]; keys[6] = 0xFF; break;
+ 233              		.loc 1 44 20 is_stmt 1 view .LVU40
+  44:emulator/input/input.c ****         case 0xFD: key = keys[6]; keys[6] = 0xFF; break;
+ 234              		.loc 1 44 24 is_stmt 0 view .LVU41
+ 235 009a 144B     		ldr	r3, .L23
+ 236 009c 5879     		ldrb	r0, [r3, #5]	@ zero_extendqisi2
+ 237              	.LVL13:
+  44:emulator/input/input.c ****         case 0xFD: key = keys[6]; keys[6] = 0xFF; break;
+ 238              		.loc 1 44 35 is_stmt 1 view .LVU42
+  44:emulator/input/input.c ****         case 0xFD: key = keys[6]; keys[6] = 0xFF; break;
+ 239              		.loc 1 44 43 is_stmt 0 view .LVU43
+ 240 009e FF22     		movs	r2, #255
+ 241 00a0 5A71     		strb	r2, [r3, #5]
+  44:emulator/input/input.c ****         case 0xFD: key = keys[6]; keys[6] = 0xFF; break;
+ 242              		.loc 1 44 51 is_stmt 1 view .LVU44
+  44:emulator/input/input.c ****         case 0xFD: key = keys[6]; keys[6] = 0xFF; break;
+ 243              		.loc 1 44 9 is_stmt 0 view .LVU45
+ARM GAS  /tmp/ccicOIm8.s 			page 7
+
+
+ 244 00a2 E1E7     		b	.L5
+ 245              	.LVL14:
+ 246              	.L12:
+  45:emulator/input/input.c ****         case 0xFE: key = keys[7]; keys[7] = 0xFF; break;
+ 247              		.loc 1 45 20 is_stmt 1 view .LVU46
+  45:emulator/input/input.c ****         case 0xFE: key = keys[7]; keys[7] = 0xFF; break;
+ 248              		.loc 1 45 24 is_stmt 0 view .LVU47
+ 249 00a4 114B     		ldr	r3, .L23
+ 250 00a6 9879     		ldrb	r0, [r3, #6]	@ zero_extendqisi2
+ 251              	.LVL15:
+  45:emulator/input/input.c ****         case 0xFE: key = keys[7]; keys[7] = 0xFF; break;
+ 252              		.loc 1 45 35 is_stmt 1 view .LVU48
+  45:emulator/input/input.c ****         case 0xFE: key = keys[7]; keys[7] = 0xFF; break;
+ 253              		.loc 1 45 43 is_stmt 0 view .LVU49
+ 254 00a8 FF22     		movs	r2, #255
+ 255 00aa 9A71     		strb	r2, [r3, #6]
+  45:emulator/input/input.c ****         case 0xFE: key = keys[7]; keys[7] = 0xFF; break;
+ 256              		.loc 1 45 51 is_stmt 1 view .LVU50
+  45:emulator/input/input.c ****         case 0xFE: key = keys[7]; keys[7] = 0xFF; break;
+ 257              		.loc 1 45 9 is_stmt 0 view .LVU51
+ 258 00ac DCE7     		b	.L5
+ 259              	.LVL16:
+ 260              	.L10:
+  46:emulator/input/input.c **** 
+ 261              		.loc 1 46 20 is_stmt 1 view .LVU52
+  46:emulator/input/input.c **** 
+ 262              		.loc 1 46 24 is_stmt 0 view .LVU53
+ 263 00ae 0F4B     		ldr	r3, .L23
+ 264 00b0 D879     		ldrb	r0, [r3, #7]	@ zero_extendqisi2
+ 265              	.LVL17:
+  46:emulator/input/input.c **** 
+ 266              		.loc 1 46 35 is_stmt 1 view .LVU54
+  46:emulator/input/input.c **** 
+ 267              		.loc 1 46 43 is_stmt 0 view .LVU55
+ 268 00b2 FF22     		movs	r2, #255
+ 269 00b4 DA71     		strb	r2, [r3, #7]
+  46:emulator/input/input.c **** 
+ 270              		.loc 1 46 51 is_stmt 1 view .LVU56
+  46:emulator/input/input.c **** 
+ 271              		.loc 1 46 9 is_stmt 0 view .LVU57
+ 272 00b6 D7E7     		b	.L5
+ 273              	.LVL18:
+ 274              	.L7:
+  51:emulator/input/input.c **** 				key &= keys[6];
+ 275              		.loc 1 51 5 is_stmt 1 view .LVU58
+  51:emulator/input/input.c **** 				key &= keys[6];
+ 276              		.loc 1 51 9 is_stmt 0 view .LVU59
+ 277 00b8 0C4B     		ldr	r3, .L23
+ 278 00ba DA79     		ldrb	r2, [r3, #7]	@ zero_extendqisi2
+ 279              	.LVL19:
+  52:emulator/input/input.c **** 				key &= keys[5];
+ 280              		.loc 1 52 5 is_stmt 1 view .LVU60
+  52:emulator/input/input.c **** 				key &= keys[5];
+ 281              		.loc 1 52 16 is_stmt 0 view .LVU61
+ 282 00bc 9879     		ldrb	r0, [r3, #6]	@ zero_extendqisi2
+  52:emulator/input/input.c **** 				key &= keys[5];
+ 283              		.loc 1 52 9 view .LVU62
+ARM GAS  /tmp/ccicOIm8.s 			page 8
+
+
+ 284 00be 0240     		ands	r2, r2, r0
+ 285              	.LVL20:
+  53:emulator/input/input.c **** 				key &= keys[4];
+ 286              		.loc 1 53 5 is_stmt 1 view .LVU63
+  53:emulator/input/input.c **** 				key &= keys[4];
+ 287              		.loc 1 53 16 is_stmt 0 view .LVU64
+ 288 00c0 5879     		ldrb	r0, [r3, #5]	@ zero_extendqisi2
+  53:emulator/input/input.c **** 				key &= keys[4];
+ 289              		.loc 1 53 9 view .LVU65
+ 290 00c2 1040     		ands	r0, r0, r2
+ 291              	.LVL21:
+  54:emulator/input/input.c **** 				key &= keys[3];
+ 292              		.loc 1 54 5 is_stmt 1 view .LVU66
+  54:emulator/input/input.c **** 				key &= keys[3];
+ 293              		.loc 1 54 16 is_stmt 0 view .LVU67
+ 294 00c4 1A79     		ldrb	r2, [r3, #4]	@ zero_extendqisi2
+  54:emulator/input/input.c **** 				key &= keys[3];
+ 295              		.loc 1 54 9 view .LVU68
+ 296 00c6 1040     		ands	r0, r0, r2
+ 297              	.LVL22:
+  55:emulator/input/input.c **** 				key &= keys[2];
+ 298              		.loc 1 55 5 is_stmt 1 view .LVU69
+  55:emulator/input/input.c **** 				key &= keys[2];
+ 299              		.loc 1 55 16 is_stmt 0 view .LVU70
+ 300 00c8 DA78     		ldrb	r2, [r3, #3]	@ zero_extendqisi2
+  55:emulator/input/input.c **** 				key &= keys[2];
+ 301              		.loc 1 55 9 view .LVU71
+ 302 00ca 0240     		ands	r2, r2, r0
+ 303              	.LVL23:
+  56:emulator/input/input.c **** 				key &= keys[1];
+ 304              		.loc 1 56 5 is_stmt 1 view .LVU72
+  56:emulator/input/input.c **** 				key &= keys[1];
+ 305              		.loc 1 56 16 is_stmt 0 view .LVU73
+ 306 00cc 9878     		ldrb	r0, [r3, #2]	@ zero_extendqisi2
+  56:emulator/input/input.c **** 				key &= keys[1];
+ 307              		.loc 1 56 9 view .LVU74
+ 308 00ce 0240     		ands	r2, r2, r0
+ 309              	.LVL24:
+  57:emulator/input/input.c **** 				key &= keys[0];
+ 310              		.loc 1 57 5 is_stmt 1 view .LVU75
+  57:emulator/input/input.c **** 				key &= keys[0];
+ 311              		.loc 1 57 16 is_stmt 0 view .LVU76
+ 312 00d0 5878     		ldrb	r0, [r3, #1]	@ zero_extendqisi2
+  57:emulator/input/input.c **** 				key &= keys[0];
+ 313              		.loc 1 57 9 view .LVU77
+ 314 00d2 1040     		ands	r0, r0, r2
+ 315              	.LVL25:
+  58:emulator/input/input.c ****                 memset(keys, 0xFF, sizeof(keys));
+ 316              		.loc 1 58 5 is_stmt 1 view .LVU78
+  58:emulator/input/input.c ****                 memset(keys, 0xFF, sizeof(keys));
+ 317              		.loc 1 58 16 is_stmt 0 view .LVU79
+ 318 00d4 1A78     		ldrb	r2, [r3]	@ zero_extendqisi2
+  58:emulator/input/input.c ****                 memset(keys, 0xFF, sizeof(keys));
+ 319              		.loc 1 58 9 view .LVU80
+ 320 00d6 1040     		ands	r0, r0, r2
+ 321              	.LVL26:
+  59:emulator/input/input.c ****                 break;
+ARM GAS  /tmp/ccicOIm8.s 			page 9
+
+
+ 322              		.loc 1 59 17 is_stmt 1 view .LVU81
+ 323 00d8 4FF0FF32 		mov	r2, #-1
+ 324 00dc 1A60     		str	r2, [r3]
+ 325 00de 5A60     		str	r2, [r3, #4]
+  60:emulator/input/input.c **** 			}
+ 326              		.loc 1 60 17 view .LVU82
+ 327 00e0 C2E7     		b	.L5
+ 328              	.LVL27:
+ 329              	.L18:
+  37:emulator/input/input.c ****     {
+ 330              		.loc 1 37 5 is_stmt 0 view .LVU83
+ 331 00e2 FF20     		movs	r0, #255
+ 332 00e4 C0E7     		b	.L5
+ 333              	.L19:
+  48:emulator/input/input.c ****         case 0x00:
+ 334              		.loc 1 48 24 view .LVU84
+ 335 00e6 0020     		movs	r0, #0
+ 336 00e8 BEE7     		b	.L5
+ 337              	.L24:
+ 338 00ea 00BF     		.align	2
+ 339              	.L23:
+ 340 00ec 00000000 		.word	.LANCHOR0
+ 341              		.cfi_endproc
+ 342              	.LFE127:
+ 344              		.section	.text.input_key_set,"ax",%progbits
+ 345              		.align	1
+ 346              		.global	input_key_set
+ 347              		.syntax unified
+ 348              		.thumb
+ 349              		.thumb_func
+ 350              		.fpu fpv4-sp-d16
+ 352              	input_key_set:
+ 353              	.LVL28:
+ 354              	.LFB128:
+  72:emulator/input/input.c **** 
+  73:emulator/input/input.c **** void input_key_set(keys_t key)
+  74:emulator/input/input.c **** {
+ 355              		.loc 1 74 1 is_stmt 1 view -0
+ 356              		.cfi_startproc
+ 357              		@ args = 0, pretend = 0, frame = 0
+ 358              		@ frame_needed = 0, uses_anonymous_args = 0
+ 359              		@ link register save eliminated.
+  75:emulator/input/input.c ****     zx_keys_t zx_key;
+ 360              		.loc 1 75 5 view .LVU86
+  76:emulator/input/input.c ****     switch (key)
+ 361              		.loc 1 76 5 view .LVU87
+ 362 0000 49F67F73 		movw	r3, #40831
+ 363 0004 9842     		cmp	r0, r3
+ 364 0006 00F07D81 		beq	.L51
+ 365 000a 25D9     		bls	.L94
+ 366 000c 4DF6FF63 		movw	r3, #57087
+ 367 0010 9842     		cmp	r0, r3
+ 368 0012 00F0A481 		beq	.L74
+ 369 0016 B0F55F4F 		cmp	r0, #57088
+ 370 001a C0F0D180 		bcc	.L95
+ 371 001e 4FF6FF53 		movw	r3, #65023
+ 372 0022 9842     		cmp	r0, r3
+ARM GAS  /tmp/ccicOIm8.s 			page 10
+
+
+ 373 0024 00F0AA81 		beq	.L83
+ 374 0028 B0F57E4F 		cmp	r0, #65024
+ 375 002c C0F03081 		bcc	.L96
+ 376 0030 4FF6BF73 		movw	r3, #65471
+ 377 0034 9842     		cmp	r0, r3
+ 378 0036 00F0AD81 		beq	.L89
+ 379 003a 40F24681 		bls	.L97
+ 380 003e 4FF6FB73 		movw	r3, #65531
+ 381 0042 9842     		cmp	r0, r3
+ 382 0044 00F0AC81 		beq	.L92
+ 383 0048 4FF6FE73 		movw	r3, #65534
+ 384 004c 9842     		cmp	r0, r3
+ 385 004e 40F04881 		bne	.L98
+  77:emulator/input/input.c ****     {
+  78:emulator/input/input.c ****         case KEY_1: zx_key = ZX_KEY_1; break;
+  79:emulator/input/input.c ****         case KEY_2: zx_key = ZX_KEY_2; break;
+  80:emulator/input/input.c ****         case KEY_3: zx_key = ZX_KEY_3; break;
+  81:emulator/input/input.c ****         case KEY_4: zx_key = ZX_KEY_4; break;
+  82:emulator/input/input.c ****         case KEY_5: zx_key = ZX_KEY_5; break;
+  83:emulator/input/input.c ****         case KEY_6: zx_key = ZX_KEY_6; break;
+  84:emulator/input/input.c ****         case KEY_7: zx_key = ZX_KEY_7; break;
+  85:emulator/input/input.c ****         case KEY_8: zx_key = ZX_KEY_8; break;
+  86:emulator/input/input.c ****         case KEY_9: zx_key = ZX_KEY_9; break;
+  87:emulator/input/input.c ****         case KEY_0: zx_key = ZX_KEY_0; break;
+  88:emulator/input/input.c **** 
+  89:emulator/input/input.c ****         case KEY_Q: zx_key = ZX_KEY_Q; break;
+  90:emulator/input/input.c ****         case KEY_W: zx_key = ZX_KEY_W; break;
+  91:emulator/input/input.c ****         case KEY_E: zx_key = ZX_KEY_E; break;
+  92:emulator/input/input.c ****         case KEY_R: zx_key = ZX_KEY_R; break;
+  93:emulator/input/input.c ****         case KEY_T: zx_key = ZX_KEY_T; break;
+  94:emulator/input/input.c ****         case KEY_Y: zx_key = ZX_KEY_Y; break;
+  95:emulator/input/input.c ****         case KEY_U: zx_key = ZX_KEY_U; break;
+  96:emulator/input/input.c ****         case KEY_I: zx_key = ZX_KEY_I; break;
+  97:emulator/input/input.c ****         case KEY_O: zx_key = ZX_KEY_O; break;
+  98:emulator/input/input.c ****         case KEY_P: zx_key = ZX_KEY_P; break;
+  99:emulator/input/input.c ****         case KEY_ENT: zx_key = ZX_KEY_ENTER; break;
+ 100:emulator/input/input.c **** 
+ 101:emulator/input/input.c ****         case KEY_A: zx_key = ZX_KEY_A; break;
+ 102:emulator/input/input.c ****         case KEY_S: zx_key = ZX_KEY_S; break;
+ 103:emulator/input/input.c ****         case KEY_D: zx_key = ZX_KEY_D; break;
+ 104:emulator/input/input.c ****         case KEY_F: zx_key = ZX_KEY_F; break;
+ 105:emulator/input/input.c ****         case KEY_G: zx_key = ZX_KEY_G; break;
+ 106:emulator/input/input.c ****         case KEY_H: zx_key = ZX_KEY_H; break;
+ 107:emulator/input/input.c ****         case KEY_J: zx_key = ZX_KEY_J; break;
+ 108:emulator/input/input.c ****         case KEY_K: zx_key = ZX_KEY_K; break;
+ 109:emulator/input/input.c ****         case KEY_L: zx_key = ZX_KEY_L; break;
+ 110:emulator/input/input.c **** 
+ 111:emulator/input/input.c ****         case KEY_LSHIFT: zx_key = ZX_KEY_SHIFT; break;
+ 112:emulator/input/input.c ****         case KEY_Z: zx_key = ZX_KEY_Z; break;
+ 113:emulator/input/input.c ****         case KEY_X: zx_key = ZX_KEY_X; break;
+ 114:emulator/input/input.c ****         case KEY_C: zx_key = ZX_KEY_C; break;
+ 115:emulator/input/input.c ****         case KEY_V: zx_key = ZX_KEY_V; break;
+ 116:emulator/input/input.c ****         case KEY_B: zx_key = ZX_KEY_B; break;
+ 117:emulator/input/input.c ****         case KEY_N: zx_key = ZX_KEY_N; break;
+ 118:emulator/input/input.c ****         case KEY_M: zx_key = ZX_KEY_M; break;
+ 119:emulator/input/input.c **** 
+ 120:emulator/input/input.c ****         case KEY_CTRL:  zx_key = ZX_KEY_SYM; break;
+ARM GAS  /tmp/ccicOIm8.s 			page 11
+
+
+ 121:emulator/input/input.c ****         case KEY_SPACE: zx_key = ZX_KEY_SPACE; break;
+ 122:emulator/input/input.c **** 
+ 123:emulator/input/input.c ****         case KEY_UP:    zx_key = ZX_KEY_7; break;
+ 124:emulator/input/input.c ****         case KEY_DOWN:  zx_key = ZX_KEY_6; break;
+ 125:emulator/input/input.c ****         case KEY_LEFT:  zx_key = ZX_KEY_5; break;
+ 126:emulator/input/input.c ****         case KEY_RIGHT: zx_key = ZX_KEY_8; break;
+ 127:emulator/input/input.c **** 
+ 128:emulator/input/input.c ****         case KEY_ALT: load = 1; return;
+ 129:emulator/input/input.c ****         case KEY_FN:  load = 2; return;
+ 130:emulator/input/input.c ****         case KEY_QUE: load = 3; return;
+ 131:emulator/input/input.c ****         case KEY_OPEN_SQ: load = 4; return;
+ 132:emulator/input/input.c ****         case KEY_CLOSE_SQ: load = 5; return;
+ 133:emulator/input/input.c ****     default:
+ 134:emulator/input/input.c ****         return;
+ 135:emulator/input/input.c ****     }
+ 136:emulator/input/input.c **** 
+ 137:emulator/input/input.c ****     uint8_t index = zx_key / KEYS_ROWS;
+ 386              		.loc 1 137 13 is_stmt 0 view .LVU88
+ 387 0052 0123     		movs	r3, #1
+  99:emulator/input/input.c **** 
+ 388              		.loc 1 99 30 view .LVU89
+ 389 0054 0522     		movs	r2, #5
+ 390 0056 64E0     		b	.L26
+ 391              	.L94:
+  76:emulator/input/input.c ****     switch (key)
+ 392              		.loc 1 76 5 view .LVU90
+ 393 0058 45F6EF73 		movw	r3, #24559
+ 394 005c 9842     		cmp	r0, r3
+ 395 005e 00F05481 		beq	.L52
+ 396 0062 1BD9     		bls	.L99
+ 397 0064 47F6BF73 		movw	r3, #32703
+ 398 0068 9842     		cmp	r0, r3
+ 399 006a 00F04781 		beq	.L38
+ 400 006e 77D9     		bls	.L100
+ 401 0070 48F6FF73 		movw	r3, #36863
+ 402 0074 9842     		cmp	r0, r3
+ 403 0076 00F06C81 		beq	.L70
+ 404 007a B0F5104F 		cmp	r0, #36864
+ 405 007e C0F09180 		bcc	.L101
+ 406 0082 49F6FF53 		movw	r3, #40447
+ 407 0086 9842     		cmp	r0, r3
+ 408 0088 00F06681 		beq	.L72
+ 409 008c 49F6FF63 		movw	r3, #40703
+ 410 0090 9842     		cmp	r0, r3
+ 411 0092 40F09480 		bne	.L102
+ 412              		.loc 1 137 13 view .LVU91
+ 413 0096 0223     		movs	r3, #2
+  97:emulator/input/input.c ****         case KEY_P: zx_key = ZX_KEY_P; break;
+ 414              		.loc 1 97 28 view .LVU92
+ 415 0098 0B22     		movs	r2, #11
+ 416 009a 42E0     		b	.L26
+ 417              	.L99:
+  76:emulator/input/input.c ****     {
+ 418              		.loc 1 76 5 view .LVU93
+ 419 009c 43F6FF63 		movw	r3, #16127
+ 420 00a0 9842     		cmp	r0, r3
+ 421 00a2 00F03581 		beq	.L53
+ARM GAS  /tmp/ccicOIm8.s 			page 12
+
+
+ 422 00a6 B0F57C5F 		cmp	r0, #16128
+ 423 00aa 13D3     		bcc	.L103
+ 424 00ac 45F6FF63 		movw	r3, #24319
+ 425 00b0 9842     		cmp	r0, r3
+ 426 00b2 00F03C81 		beq	.L60
+ 427 00b6 B0F5BE4F 		cmp	r0, #24320
+ 428 00ba 43D3     		bcc	.L104
+ 429 00bc 45F67F73 		movw	r3, #24447
+ 430 00c0 9842     		cmp	r0, r3
+ 431 00c2 00F03A81 		beq	.L63
+ 432 00c6 45F6BF73 		movw	r3, #24511
+ 433 00ca 9842     		cmp	r0, r3
+ 434 00cc 47D1     		bne	.L105
+ 435              		.loc 1 137 13 view .LVU94
+ 436 00ce 0523     		movs	r3, #5
+  92:emulator/input/input.c ****         case KEY_T: zx_key = ZX_KEY_T; break;
+ 437              		.loc 1 92 28 view .LVU95
+ 438 00d0 1C22     		movs	r2, #28
+ 439 00d2 26E0     		b	.L26
+ 440              	.L103:
+  76:emulator/input/input.c ****     {
+ 441              		.loc 1 76 5 view .LVU96
+ 442 00d4 41F6BF73 		movw	r3, #8127
+ 443 00d8 9842     		cmp	r0, r3
+ 444 00da 00F01C81 		beq	.L54
+ 445 00de B0F5FE5F 		cmp	r0, #8128
+ 446 00e2 0BD3     		bcc	.L106
+ 447 00e4 41F6EF73 		movw	r3, #8175
+ 448 00e8 9842     		cmp	r0, r3
+ 449 00ea 00F01D81 		beq	.L58
+ 450 00ee 41F6FB73 		movw	r3, #8187
+ 451 00f2 9842     		cmp	r0, r3
+ 452 00f4 25D1     		bne	.L107
+ 453              		.loc 1 137 13 view .LVU97
+ 454 00f6 0323     		movs	r3, #3
+  83:emulator/input/input.c ****         case KEY_7: zx_key = ZX_KEY_7; break;
+ 455              		.loc 1 83 28 view .LVU98
+ 456 00f8 1322     		movs	r2, #19
+ 457 00fa 12E0     		b	.L26
+ 458              	.L106:
+  76:emulator/input/input.c ****     {
+ 459              		.loc 1 76 5 view .LVU99
+ 460 00fc 41F6FF63 		movw	r3, #7935
+ 461 0100 9842     		cmp	r0, r3
+ 462 0102 00F00B81 		beq	.L55
+ 463 0106 41F67F73 		movw	r3, #8063
+ 464 010a 9842     		cmp	r0, r3
+ 465 010c 03D1     		bne	.L108
+ 132:emulator/input/input.c ****     default:
+ 466              		.loc 1 132 28 is_stmt 1 view .LVU100
+ 132:emulator/input/input.c ****     default:
+ 467              		.loc 1 132 33 is_stmt 0 view .LVU101
+ 468 010e A64B     		ldr	r3, .L126
+ 469 0110 0522     		movs	r2, #5
+ 470 0112 1A70     		strb	r2, [r3]
+ 132:emulator/input/input.c ****     default:
+ 471              		.loc 1 132 38 is_stmt 1 view .LVU102
+ARM GAS  /tmp/ccicOIm8.s 			page 13
+
+
+ 472 0114 7047     		bx	lr
+ 473              	.L108:
+  76:emulator/input/input.c ****     {
+ 474              		.loc 1 76 5 is_stmt 0 view .LVU103
+ 475 0116 41F6FF53 		movw	r3, #7679
+ 476 011a 9842     		cmp	r0, r3
+ 477 011c 0DD1     		bne	.L109
+ 478              		.loc 1 137 13 view .LVU104
+ 479 011e 0123     		movs	r3, #1
+ 106:emulator/input/input.c ****         case KEY_J: zx_key = ZX_KEY_J; break;
+ 480              		.loc 1 106 28 view .LVU105
+ 481 0120 0922     		movs	r2, #9
+ 482              	.LVL29:
+ 483              	.L26:
+ 138:emulator/input/input.c ****     if (index > KEYS_COLOMNS)
+ 139:emulator/input/input.c ****     {
+ 140:emulator/input/input.c ****         return;
+ 141:emulator/input/input.c ****     }
+ 142:emulator/input/input.c **** 
+ 143:emulator/input/input.c ****     keys[index] = ~(1 << (zx_key - (index * KEYS_ROWS)));
+ 484              		.loc 1 143 5 is_stmt 1 view .LVU106
+ 485              		.loc 1 143 43 is_stmt 0 view .LVU107
+ 486 0122 C3EB8371 		rsb	r1, r3, r3, lsl #30
+ 487 0126 C3EB8101 		rsb	r1, r3, r1, lsl #2
+ 488              		.loc 1 143 34 view .LVU108
+ 489 012a 0A44     		add	r2, r2, r1
+ 490              		.loc 1 143 23 view .LVU109
+ 491 012c 0121     		movs	r1, #1
+ 492 012e 01FA02F2 		lsl	r2, r1, r2
+ 493              		.loc 1 143 17 view .LVU110
+ 494 0132 D243     		mvns	r2, r2
+ 495 0134 9D49     		ldr	r1, .L126+4
+ 496 0136 CA54     		strb	r2, [r1, r3]
+ 497              	.L25:
+ 144:emulator/input/input.c **** }...
+ 498              		.loc 1 144 1 view .LVU111
+ 499 0138 7047     		bx	lr
+ 500              	.LVL30:
+ 501              	.L109:
+ 502              		.loc 1 144 1 view .LVU112
+ 503 013a 7047     		bx	lr
+ 504              	.LVL31:
+ 505              	.L36:
+ 137:emulator/input/input.c ****     uint8_t index = zx_key / KEYS_ROWS;
+ 506              		.loc 1 137 13 view .LVU113
+ 507 013c 0723     		movs	r3, #7
+ 115:emulator/input/input.c ****         case KEY_V: zx_key = ZX_KEY_V; break;
+ 508              		.loc 1 115 28 view .LVU114
+ 509 013e 2722     		movs	r2, #39
+ 510 0140 EFE7     		b	.L26
+ 511              	.LVL32:
+ 512              	.L107:
+ 115:emulator/input/input.c ****         case KEY_V: zx_key = ZX_KEY_V; break;
+ 513              		.loc 1 115 28 view .LVU115
+ 514 0142 7047     		bx	lr
+ 515              	.L104:
+  76:emulator/input/input.c ****     switch (key)
+ARM GAS  /tmp/ccicOIm8.s 			page 14
+
+
+ 516              		.loc 1 76 5 view .LVU116
+ 517 0144 43F67F73 		movw	r3, #16255
+ 518 0148 9842     		cmp	r0, r3
+ 519 014a 00F0F380 		beq	.L61
+ 520 014e 45F6FF53 		movw	r3, #24063
+ 521 0152 9842     		cmp	r0, r3
+ 522 0154 02D1     		bne	.L110
+ 137:emulator/input/input.c ****     uint8_t index = zx_key / KEYS_ROWS;
+ 523              		.loc 1 137 13 view .LVU117
+ 524 0156 0023     		movs	r3, #0
+ 116:emulator/input/input.c ****         case KEY_B: zx_key = ZX_KEY_B; break;
+ 525              		.loc 1 116 28 view .LVU118
+ 526 0158 0422     		movs	r2, #4
+ 527 015a E2E7     		b	.L26
+ 528              	.L110:
+ 529 015c 7047     		bx	lr
+ 530              	.L105:
+ 531 015e 7047     		bx	lr
+ 532              	.L100:
+  76:emulator/input/input.c ****     switch (key)
+ 533              		.loc 1 76 5 view .LVU119
+ 534 0160 47F6FF53 		movw	r3, #32255
+ 535 0164 9842     		cmp	r0, r3
+ 536 0166 00F0EB80 		beq	.L65
+ 537 016a B0F5FC4F 		cmp	r0, #32256
+ 538 016e 0BD3     		bcc	.L111
+ 539 0170 47F6FF63 		movw	r3, #32511
+ 540 0174 9842     		cmp	r0, r3
+ 541 0176 00F0E980 		beq	.L68
+ 542 017a 47F67F73 		movw	r3, #32639
+ 543 017e 9842     		cmp	r0, r3
+ 544 0180 0FD1     		bne	.L112
+ 137:emulator/input/input.c ****     uint8_t index = zx_key / KEYS_ROWS;
+ 545              		.loc 1 137 13 view .LVU120
+ 546 0182 0123     		movs	r3, #1
+ 107:emulator/input/input.c ****         case KEY_J: zx_key = ZX_KEY_J; break;
+ 547              		.loc 1 107 28 view .LVU121
+ 548 0184 0822     		movs	r2, #8
+ 549 0186 CCE7     		b	.L26
+ 550              	.L111:
+  76:emulator/input/input.c ****     switch (key)
+ 551              		.loc 1 76 5 view .LVU122
+ 552 0188 45F6FB73 		movw	r3, #24571
+ 553 018c 9842     		cmp	r0, r3
+ 554 018e 00F0DA80 		beq	.L66
+ 555 0192 45F6FE73 		movw	r3, #24574
+ 556 0196 9842     		cmp	r0, r3
+ 557 0198 02D1     		bne	.L113
+ 137:emulator/input/input.c ****     uint8_t index = zx_key / KEYS_ROWS;
+ 558              		.loc 1 137 13 view .LVU123
+ 559 019a 0023     		movs	r3, #0
+ 121:emulator/input/input.c ****         case KEY_SPACE: zx_key = ZX_KEY_SPACE; break;
+ 560              		.loc 1 121 32 view .LVU124
+ 561 019c 1A46     		mov	r2, r3
+ 562 019e C0E7     		b	.L26
+ 563              	.L113:
+ 564 01a0 7047     		bx	lr
+ARM GAS  /tmp/ccicOIm8.s 			page 15
+
+
+ 565              	.L112:
+ 566 01a2 7047     		bx	lr
+ 567              	.L101:
+  76:emulator/input/input.c ****     switch (key)
+ 568              		.loc 1 76 5 view .LVU125
+ 569 01a4 47F6DF73 		movw	r3, #32735
+ 570 01a8 9842     		cmp	r0, r3
+ 571 01aa 00F09F80 		beq	.L42
+ 572 01ae 47F6FB73 		movw	r3, #32763
+ 573 01b2 9842     		cmp	r0, r3
+ 574 01b4 02D1     		bne	.L114
+ 137:emulator/input/input.c ****     uint8_t index = zx_key / KEYS_ROWS;
+ 575              		.loc 1 137 13 view .LVU126
+ 576 01b6 0023     		movs	r3, #0
+ 118:emulator/input/input.c ****         case KEY_M: zx_key = ZX_KEY_M; break;
+ 577              		.loc 1 118 28 view .LVU127
+ 578 01b8 0222     		movs	r2, #2
+ 579 01ba B2E7     		b	.L26
+ 580              	.L114:
+ 581 01bc 7047     		bx	lr
+ 582              	.L102:
+ 583 01be 7047     		bx	lr
+ 584              	.L95:
+  76:emulator/input/input.c ****     switch (key)
+ 585              		.loc 1 76 5 view .LVU128
+ 586 01c0 4BF6BF73 		movw	r3, #49087
+ 587 01c4 9842     		cmp	r0, r3
+ 588 01c6 00F0CD80 		beq	.L75
+ 589 01ca 2FD9     		bls	.L115
+ 590 01cc 4BF6FE73 		movw	r3, #49150
+ 591 01d0 9842     		cmp	r0, r3
+ 592 01d2 55D8     		bhi	.L46
+ 593 01d4 4BF6EF73 		movw	r3, #49135
+ 594 01d8 9842     		cmp	r0, r3
+ 595 01da 50D3     		bcc	.L116
+ 596 01dc A0F53F40 		sub	r0, r0, #48896
+ 597              	.LVL33:
+  76:emulator/input/input.c ****     switch (key)
+ 598              		.loc 1 76 5 view .LVU129
+ 599 01e0 EF38     		subs	r0, r0, #239
+ 600 01e2 0F28     		cmp	r0, #15
+ 601 01e4 A8D8     		bhi	.L25
+ 602 01e6 01A3     		adr	r3, .L34
+ 603 01e8 53F820F0 		ldr	pc, [r3, r0, lsl #2]
+ 604              		.p2align 2
+ 605              	.L34:
+ 606 01ec 3D010000 		.word	.L36+1
+ 607 01f0 39010000 		.word	.L25+1
+ 608 01f4 39010000 		.word	.L25+1
+ 609 01f8 39010000 		.word	.L25+1
+ 610 01fc 39010000 		.word	.L25+1
+ 611 0200 39010000 		.word	.L25+1
+ 612 0204 39010000 		.word	.L25+1
+ 613 0208 39010000 		.word	.L25+1
+ 614 020c F5020000 		.word	.L35+1
+ 615 0210 39010000 		.word	.L25+1
+ 616 0214 39010000 		.word	.L25+1
+ARM GAS  /tmp/ccicOIm8.s 			page 16
+
+
+ 617 0218 39010000 		.word	.L25+1
+ 618 021c 23030000 		.word	.L57+1
+ 619 0220 39010000 		.word	.L25+1
+ 620 0224 39010000 		.word	.L25+1
+ 621 0228 E5020000 		.word	.L33+1
+ 622              	.LVL34:
+ 623              		.p2align 1
+ 624              	.L115:
+  76:emulator/input/input.c ****     switch (key)
+ 625              		.loc 1 76 5 view .LVU130
+ 626 022c 4BF6FF53 		movw	r3, #48639
+ 627 0230 9842     		cmp	r0, r3
+ 628 0232 00F09A80 		beq	.L76
+ 629 0236 B0F53E4F 		cmp	r0, #48640
+ 630 023a 0BD3     		bcc	.L117
+ 631 023c 4BF6FF63 		movw	r3, #48895
+ 632 0240 9842     		cmp	r0, r3
+ 633 0242 00F09880 		beq	.L80
+ 634 0246 4BF67F73 		movw	r3, #49023
+ 635 024a 9842     		cmp	r0, r3
+ 636 024c 16D1     		bne	.L118
+ 137:emulator/input/input.c ****     uint8_t index = zx_key / KEYS_ROWS;
+ 637              		.loc 1 137 13 view .LVU131
+ 638 024e 0623     		movs	r3, #6
+ 103:emulator/input/input.c ****         case KEY_D: zx_key = ZX_KEY_D; break;
+ 639              		.loc 1 103 28 view .LVU132
+ 640 0250 2022     		movs	r2, #32
+ 641 0252 66E7     		b	.L26
+ 642              	.L117:
+  76:emulator/input/input.c ****     switch (key)
+ 643              		.loc 1 76 5 view .LVU133
+ 644 0254 49F6EF73 		movw	r3, #40943
+ 645 0258 9842     		cmp	r0, r3
+ 646 025a 00F08980 		beq	.L77
+ 647 025e 49F6FB73 		movw	r3, #40955
+ 648 0262 9842     		cmp	r0, r3
+ 649 0264 02D1     		bne	.L119
+ 137:emulator/input/input.c ****     uint8_t index = zx_key / KEYS_ROWS;
+ 650              		.loc 1 137 13 view .LVU134
+ 651 0266 0323     		movs	r3, #3
+  85:emulator/input/input.c ****         case KEY_8: zx_key = ZX_KEY_8; break;
+ 652              		.loc 1 85 28 view .LVU135
+ 653 0268 1122     		movs	r2, #17
+ 654 026a 5AE7     		b	.L26
+ 655              	.L119:
+  76:emulator/input/input.c ****     switch (key)
+ 656              		.loc 1 76 5 view .LVU136
+ 657 026c 49F6BF73 		movw	r3, #40895
+ 658 0270 9842     		cmp	r0, r3
+ 659 0272 02D1     		bne	.L120
+ 137:emulator/input/input.c ****     uint8_t index = zx_key / KEYS_ROWS;
+ 660              		.loc 1 137 13 view .LVU137
+ 661 0274 0123     		movs	r3, #1
+ 108:emulator/input/input.c ****         case KEY_K: zx_key = ZX_KEY_K; break;
+ 662              		.loc 1 108 28 view .LVU138
+ 663 0276 0722     		movs	r2, #7
+ 664 0278 53E7     		b	.L26
+ARM GAS  /tmp/ccicOIm8.s 			page 17
+
+
+ 665              	.L120:
+ 666 027a 7047     		bx	lr
+ 667              	.L118:
+ 668 027c 7047     		bx	lr
+ 669              	.L116:
+ 670 027e 7047     		bx	lr
+ 671              	.L46:
+  76:emulator/input/input.c ****     switch (key)
+ 672              		.loc 1 76 5 view .LVU139
+ 673 0280 4DF6FF53 		movw	r3, #56831
+ 674 0284 9842     		cmp	r0, r3
+ 675 0286 02D1     		bne	.L121
+ 137:emulator/input/input.c ****     uint8_t index = zx_key / KEYS_ROWS;
+ 676              		.loc 1 137 13 view .LVU140
+ 677 0288 0723     		movs	r3, #7
+ 113:emulator/input/input.c ****         case KEY_X: zx_key = ZX_KEY_X; break;
+ 678              		.loc 1 113 28 view .LVU141
+ 679 028a 2522     		movs	r2, #37
+ 680 028c 49E7     		b	.L26
+ 681              	.L121:
+ 682 028e 7047     		bx	lr
+ 683              	.L96:
+  76:emulator/input/input.c ****     switch (key)
+ 684              		.loc 1 76 5 view .LVU142
+ 685 0290 4DF6EF73 		movw	r3, #57327
+ 686 0294 9842     		cmp	r0, r3
+ 687 0296 74D0     		beq	.L84
+ 688 0298 0AD9     		bls	.L122
+ 689 029a 4DF6FB73 		movw	r3, #57339
+ 690 029e 9842     		cmp	r0, r3
+ 691 02a0 75D0     		beq	.L87
+ 692 02a2 4FF2FF73 		movw	r3, #63487
+ 693 02a6 9842     		cmp	r0, r3
+ 694 02a8 0ED1     		bne	.L123
+ 137:emulator/input/input.c ****     uint8_t index = zx_key / KEYS_ROWS;
+ 695              		.loc 1 137 13 view .LVU143
+ 696 02aa 0723     		movs	r3, #7
+ 111:emulator/input/input.c ****         case KEY_LSHIFT: zx_key = ZX_KEY_SHIFT; break;
+ 697              		.loc 1 111 33 view .LVU144
+ 698 02ac 2322     		movs	r2, #35
+ 699 02ae 38E7     		b	.L26
+ 700              	.L122:
+  76:emulator/input/input.c ****     switch (key)
+ 701              		.loc 1 76 5 view .LVU145
+ 702 02b0 4DF67F73 		movw	r3, #57215
+ 703 02b4 9842     		cmp	r0, r3
+ 704 02b6 67D0     		beq	.L85
+ 705 02b8 4DF6BF73 		movw	r3, #57279
+ 706 02bc 9842     		cmp	r0, r3
+ 707 02be 02D1     		bne	.L124
+ 137:emulator/input/input.c ****     uint8_t index = zx_key / KEYS_ROWS;
+ 708              		.loc 1 137 13 view .LVU146
+ 709 02c0 0523     		movs	r3, #5
+  89:emulator/input/input.c ****         case KEY_Q: zx_key = ZX_KEY_Q; break;
+ 710              		.loc 1 89 28 view .LVU147
+ 711 02c2 1922     		movs	r2, #25
+ 712 02c4 2DE7     		b	.L26
+ARM GAS  /tmp/ccicOIm8.s 			page 18
+
+
+ 713              	.L124:
+ 714 02c6 7047     		bx	lr
+ 715              	.L123:
+ 716 02c8 7047     		bx	lr
+ 717              	.L97:
+  76:emulator/input/input.c ****     switch (key)
+ 718              		.loc 1 76 5 view .LVU148
+ 719 02ca 4FF6FF63 		movw	r3, #65279
+ 720 02ce 9842     		cmp	r0, r3
+ 721 02d0 63D0     		beq	.L90
+ 722 02d2 4FF67F73 		movw	r3, #65407
+ 723 02d6 9842     		cmp	r0, r3
+ 724 02d8 02D1     		bne	.L125
+ 137:emulator/input/input.c ****     uint8_t index = zx_key / KEYS_ROWS;
+ 725              		.loc 1 137 13 view .LVU149
+ 726 02da 0423     		movs	r3, #4
+ 125:emulator/input/input.c ****         case KEY_LEFT:  zx_key = ZX_KEY_5; break;
+ 727              		.loc 1 125 32 view .LVU150
+ 728 02dc 1822     		movs	r2, #24
+ 729 02de 20E7     		b	.L26
+ 730              	.L125:
+ 731 02e0 7047     		bx	lr
+ 732              	.L98:
+ 733 02e2 7047     		bx	lr
+ 734              	.LVL35:
+ 735              	.L33:
+ 128:emulator/input/input.c ****         case KEY_ALT: load = 1; return;
+ 736              		.loc 1 128 23 is_stmt 1 view .LVU151
+ 128:emulator/input/input.c ****         case KEY_ALT: load = 1; return;
+ 737              		.loc 1 128 28 is_stmt 0 view .LVU152
+ 738 02e4 304B     		ldr	r3, .L126
+ 739 02e6 0122     		movs	r2, #1
+ 740 02e8 1A70     		strb	r2, [r3]
+ 128:emulator/input/input.c ****         case KEY_ALT: load = 1; return;
+ 741              		.loc 1 128 33 is_stmt 1 view .LVU153
+ 742 02ea 7047     		bx	lr
+ 743              	.LVL36:
+ 744              	.L42:
+ 129:emulator/input/input.c ****         case KEY_FN:  load = 2; return;
+ 745              		.loc 1 129 23 view .LVU154
+ 129:emulator/input/input.c ****         case KEY_FN:  load = 2; return;
+ 746              		.loc 1 129 28 is_stmt 0 view .LVU155
+ 747 02ec 2E4B     		ldr	r3, .L126
+ 748 02ee 0222     		movs	r2, #2
+ 749 02f0 1A70     		strb	r2, [r3]
+ 129:emulator/input/input.c ****         case KEY_FN:  load = 2; return;
+ 750              		.loc 1 129 33 is_stmt 1 view .LVU156
+ 751 02f2 7047     		bx	lr
+ 752              	.LVL37:
+ 753              	.L35:
+ 130:emulator/input/input.c ****         case KEY_QUE: load = 3; return;
+ 754              		.loc 1 130 23 view .LVU157
+ 130:emulator/input/input.c ****         case KEY_QUE: load = 3; return;
+ 755              		.loc 1 130 28 is_stmt 0 view .LVU158
+ 756 02f4 2C4B     		ldr	r3, .L126
+ 757 02f6 0322     		movs	r2, #3
+ 758 02f8 1A70     		strb	r2, [r3]
+ARM GAS  /tmp/ccicOIm8.s 			page 19
+
+
+ 130:emulator/input/input.c ****         case KEY_QUE: load = 3; return;
+ 759              		.loc 1 130 33 is_stmt 1 view .LVU159
+ 760 02fa 7047     		bx	lr
+ 761              	.LVL38:
+ 762              	.L38:
+ 131:emulator/input/input.c ****         case KEY_OPEN_SQ: load = 4; return;
+ 763              		.loc 1 131 27 view .LVU160
+ 131:emulator/input/input.c ****         case KEY_OPEN_SQ: load = 4; return;
+ 764              		.loc 1 131 32 is_stmt 0 view .LVU161
+ 765 02fc 2A4B     		ldr	r3, .L126
+ 766 02fe 0422     		movs	r2, #4
+ 767 0300 1A70     		strb	r2, [r3]
+ 131:emulator/input/input.c ****         case KEY_OPEN_SQ: load = 4; return;
+ 768              		.loc 1 131 37 is_stmt 1 view .LVU162
+ 769 0302 7047     		bx	lr
+ 770              	.L51:
+ 137:emulator/input/input.c ****     uint8_t index = zx_key / KEYS_ROWS;
+ 771              		.loc 1 137 13 is_stmt 0 view .LVU163
+ 772 0304 0323     		movs	r3, #3
+  86:emulator/input/input.c ****         case KEY_9: zx_key = ZX_KEY_9; break;
+ 773              		.loc 1 86 28 view .LVU164
+ 774 0306 1022     		movs	r2, #16
+ 775 0308 0BE7     		b	.L26
+ 776              	.L52:
+ 137:emulator/input/input.c ****     uint8_t index = zx_key / KEYS_ROWS;
+ 777              		.loc 1 137 13 view .LVU165
+ 778 030a 0423     		movs	r3, #4
+  81:emulator/input/input.c ****         case KEY_4: zx_key = ZX_KEY_4; break;
+ 779              		.loc 1 81 28 view .LVU166
+ 780 030c 1722     		movs	r2, #23
+ 781 030e 08E7     		b	.L26
+ 782              	.L53:
+ 137:emulator/input/input.c ****     uint8_t index = zx_key / KEYS_ROWS;
+ 783              		.loc 1 137 13 view .LVU167
+ 784 0310 0223     		movs	r3, #2
+  98:emulator/input/input.c ****         case KEY_P: zx_key = ZX_KEY_P; break;
+ 785              		.loc 1 98 28 view .LVU168
+ 786 0312 0A22     		movs	r2, #10
+ 787 0314 05E7     		b	.L26
+ 788              	.L54:
+  76:emulator/input/input.c ****     switch (key)
+ 789              		.loc 1 76 5 view .LVU169
+ 790 0316 0423     		movs	r3, #4
+ 791 0318 1422     		movs	r2, #20
+ 792 031a 02E7     		b	.L26
+ 793              	.L55:
+ 137:emulator/input/input.c ****     uint8_t index = zx_key / KEYS_ROWS;
+ 794              		.loc 1 137 13 view .LVU170
+ 795 031c 0323     		movs	r3, #3
+ 123:emulator/input/input.c ****         case KEY_UP:    zx_key = ZX_KEY_7; break;
+ 796              		.loc 1 123 32 view .LVU171
+ 797 031e 1222     		movs	r2, #18
+ 798 0320 FFE6     		b	.L26
+ 799              	.LVL39:
+ 800              	.L57:
+ 137:emulator/input/input.c ****     uint8_t index = zx_key / KEYS_ROWS;
+ 801              		.loc 1 137 13 view .LVU172
+ARM GAS  /tmp/ccicOIm8.s 			page 20
+
+
+ 802 0322 0723     		movs	r3, #7
+ 114:emulator/input/input.c ****         case KEY_C: zx_key = ZX_KEY_C; break;
+ 803              		.loc 1 114 28 view .LVU173
+ 804 0324 2622     		movs	r2, #38
+ 805 0326 FCE6     		b	.L26
+ 806              	.LVL40:
+ 807              	.L58:
+ 137:emulator/input/input.c ****     uint8_t index = zx_key / KEYS_ROWS;
+ 808              		.loc 1 137 13 view .LVU174
+ 809 0328 0423     		movs	r3, #4
+  79:emulator/input/input.c ****         case KEY_2: zx_key = ZX_KEY_2; break;
+ 810              		.loc 1 79 28 view .LVU175
+ 811 032a 1522     		movs	r2, #21
+ 812 032c F9E6     		b	.L26
+ 813              	.L60:
+ 137:emulator/input/input.c ****     uint8_t index = zx_key / KEYS_ROWS;
+ 814              		.loc 1 137 13 view .LVU176
+ 815 032e 0623     		movs	r3, #6
+ 105:emulator/input/input.c ****         case KEY_G: zx_key = ZX_KEY_G; break;
+ 816              		.loc 1 105 28 view .LVU177
+ 817 0330 2222     		movs	r2, #34
+ 818 0332 F6E6     		b	.L26
+ 819              	.L61:
+ 137:emulator/input/input.c ****     uint8_t index = zx_key / KEYS_ROWS;
+ 820              		.loc 1 137 13 view .LVU178
+ 821 0334 0323     		movs	r3, #3
+  87:emulator/input/input.c ****         case KEY_0: zx_key = ZX_KEY_0; break;
+ 822              		.loc 1 87 28 view .LVU179
+ 823 0336 0F22     		movs	r2, #15
+ 824 0338 F3E6     		b	.L26
+ 825              	.L63:
+ 137:emulator/input/input.c ****     uint8_t index = zx_key / KEYS_ROWS;
+ 826              		.loc 1 137 13 view .LVU180
+ 827 033a 0523     		movs	r3, #5
+  93:emulator/input/input.c ****         case KEY_T: zx_key = ZX_KEY_T; break;
+ 828              		.loc 1 93 28 view .LVU181
+ 829 033c 1D22     		movs	r2, #29
+ 830 033e F0E6     		b	.L26
+ 831              	.L65:
+ 137:emulator/input/input.c ****     uint8_t index = zx_key / KEYS_ROWS;
+ 832              		.loc 1 137 13 view .LVU182
+ 833 0340 0323     		movs	r3, #3
+  84:emulator/input/input.c ****         case KEY_7: zx_key = ZX_KEY_7; break;
+ 834              		.loc 1 84 28 view .LVU183
+ 835 0342 1222     		movs	r2, #18
+ 836 0344 EDE6     		b	.L26
+ 837              	.L66:
+ 137:emulator/input/input.c ****     uint8_t index = zx_key / KEYS_ROWS;
+ 838              		.loc 1 137 13 view .LVU184
+ 839 0346 0423     		movs	r3, #4
+  82:emulator/input/input.c ****         case KEY_5: zx_key = ZX_KEY_5; break;
+ 840              		.loc 1 82 28 view .LVU185
+ 841 0348 1822     		movs	r2, #24
+ 842 034a EAE6     		b	.L26
+ 843              	.L68:
+ 137:emulator/input/input.c ****     uint8_t index = zx_key / KEYS_ROWS;
+ 844              		.loc 1 137 13 view .LVU186
+ARM GAS  /tmp/ccicOIm8.s 			page 21
+
+
+ 845 034c 0223     		movs	r3, #2
+  95:emulator/input/input.c ****         case KEY_U: zx_key = ZX_KEY_U; break;
+ 846              		.loc 1 95 28 view .LVU187
+ 847 034e 0D22     		movs	r2, #13
+ 848 0350 E7E6     		b	.L26
+ 849              	.L70:
+ 137:emulator/input/input.c ****     uint8_t index = zx_key / KEYS_ROWS;
+ 850              		.loc 1 137 13 view .LVU188
+ 851 0352 0023     		movs	r3, #0
+ 120:emulator/input/input.c ****         case KEY_CTRL:  zx_key = ZX_KEY_SYM; break;
+ 852              		.loc 1 120 32 view .LVU189
+ 853 0354 0122     		movs	r2, #1
+ 854 0356 E4E6     		b	.L26
+ 855              	.L72:
+ 137:emulator/input/input.c ****     uint8_t index = zx_key / KEYS_ROWS;
+ 856              		.loc 1 137 13 view .LVU190
+ 857 0358 0123     		movs	r3, #1
+ 109:emulator/input/input.c ****         case KEY_L: zx_key = ZX_KEY_L; break;
+ 858              		.loc 1 109 28 view .LVU191
+ 859 035a 0622     		movs	r2, #6
+ 860 035c E1E6     		b	.L26
+ 861              	.L74:
+ 137:emulator/input/input.c ****     uint8_t index = zx_key / KEYS_ROWS;
+ 862              		.loc 1 137 13 view .LVU192
+ 863 035e 0523     		movs	r3, #5
+  90:emulator/input/input.c ****         case KEY_W: zx_key = ZX_KEY_W; break;
+ 864              		.loc 1 90 28 view .LVU193
+ 865 0360 1A22     		movs	r2, #26
+ 866 0362 DEE6     		b	.L26
+ 867              	.L75:
+ 137:emulator/input/input.c ****     uint8_t index = zx_key / KEYS_ROWS;
+ 868              		.loc 1 137 13 view .LVU194
+ 869 0364 0623     		movs	r3, #6
+ 104:emulator/input/input.c ****         case KEY_F: zx_key = ZX_KEY_F; break;
+ 870              		.loc 1 104 28 view .LVU195
+ 871 0366 2122     		movs	r2, #33
+ 872 0368 DBE6     		b	.L26
+ 873              	.L76:
+ 137:emulator/input/input.c ****     uint8_t index = zx_key / KEYS_ROWS;
+ 874              		.loc 1 137 13 view .LVU196
+ 875 036a 0423     		movs	r3, #4
+  80:emulator/input/input.c ****         case KEY_3: zx_key = ZX_KEY_3; break;
+ 876              		.loc 1 80 28 view .LVU197
+ 877 036c 1622     		movs	r2, #22
+ 878 036e D8E6     		b	.L26
+ 879              	.L77:
+ 137:emulator/input/input.c ****     uint8_t index = zx_key / KEYS_ROWS;
+ 880              		.loc 1 137 13 view .LVU198
+ 881 0370 0223     		movs	r3, #2
+  96:emulator/input/input.c ****         case KEY_I: zx_key = ZX_KEY_I; break;
+ 882              		.loc 1 96 28 view .LVU199
+ 883 0372 0C22     		movs	r2, #12
+ 884 0374 D5E6     		b	.L26
+ 885              	.L80:
+ 137:emulator/input/input.c ****     uint8_t index = zx_key / KEYS_ROWS;
+ 886              		.loc 1 137 13 view .LVU200
+ 887 0376 0523     		movs	r3, #5
+ARM GAS  /tmp/ccicOIm8.s 			page 22
+
+
+  91:emulator/input/input.c ****         case KEY_E: zx_key = ZX_KEY_E; break;
+ 888              		.loc 1 91 28 view .LVU201
+ 889 0378 1B22     		movs	r2, #27
+ 890 037a D2E6     		b	.L26
+ 891              	.L83:
+ 137:emulator/input/input.c ****     uint8_t index = zx_key / KEYS_ROWS;
+ 892              		.loc 1 137 13 view .LVU202
+ 893 037c 0023     		movs	r3, #0
+ 117:emulator/input/input.c ****         case KEY_N: zx_key = ZX_KEY_N; break;
+ 894              		.loc 1 117 28 view .LVU203
+ 895 037e 0322     		movs	r2, #3
+ 896 0380 CFE6     		b	.L26
+ 897              	.L84:
+ 137:emulator/input/input.c ****     uint8_t index = zx_key / KEYS_ROWS;
+ 898              		.loc 1 137 13 view .LVU204
+ 899 0382 0623     		movs	r3, #6
+ 101:emulator/input/input.c ****         case KEY_A: zx_key = ZX_KEY_A; break;
+ 900              		.loc 1 101 28 view .LVU205
+ 901 0384 1E22     		movs	r2, #30
+ 902 0386 CCE6     		b	.L26
+ 903              	.L85:
+ 137:emulator/input/input.c ****     uint8_t index = zx_key / KEYS_ROWS;
+ 904              		.loc 1 137 13 view .LVU206
+ 905 0388 0623     		movs	r3, #6
+ 102:emulator/input/input.c ****         case KEY_S: zx_key = ZX_KEY_S; break;
+ 906              		.loc 1 102 28 view .LVU207
+ 907 038a 1F22     		movs	r2, #31
+ 908 038c C9E6     		b	.L26
+ 909              	.L87:
+ 137:emulator/input/input.c ****     uint8_t index = zx_key / KEYS_ROWS;
+ 910              		.loc 1 137 13 view .LVU208
+ 911 038e 0723     		movs	r3, #7
+ 112:emulator/input/input.c ****         case KEY_Z: zx_key = ZX_KEY_Z; break;
+ 912              		.loc 1 112 28 view .LVU209
+ 913 0390 2422     		movs	r2, #36
+ 914 0392 C6E6     		b	.L26
+ 915              	.L89:
+ 137:emulator/input/input.c ****     uint8_t index = zx_key / KEYS_ROWS;
+ 916              		.loc 1 137 13 view .LVU210
+ 917 0394 0323     		movs	r3, #3
+ 126:emulator/input/input.c ****         case KEY_RIGHT: zx_key = ZX_KEY_8; break;
+ 918              		.loc 1 126 32 view .LVU211
+ 919 0396 1122     		movs	r2, #17
+ 920 0398 C3E6     		b	.L26
+ 921              	.L90:
+ 137:emulator/input/input.c ****     uint8_t index = zx_key / KEYS_ROWS;
+ 922              		.loc 1 137 13 view .LVU212
+ 923 039a 0323     		movs	r3, #3
+ 124:emulator/input/input.c ****         case KEY_DOWN:  zx_key = ZX_KEY_6; break;
+ 924              		.loc 1 124 32 view .LVU213
+ 925 039c 1322     		movs	r2, #19
+ 926 039e C0E6     		b	.L26
+ 927              	.L92:
+ 137:emulator/input/input.c ****     uint8_t index = zx_key / KEYS_ROWS;
+ 928              		.loc 1 137 13 view .LVU214
+ 929 03a0 0223     		movs	r3, #2
+  94:emulator/input/input.c ****         case KEY_Y: zx_key = ZX_KEY_Y; break;
+ARM GAS  /tmp/ccicOIm8.s 			page 23
+
+
+ 930              		.loc 1 94 28 view .LVU215
+ 931 03a2 0E22     		movs	r2, #14
+ 932 03a4 BDE6     		b	.L26
+ 933              	.L127:
+ 934 03a6 00BF     		.align	2
+ 935              	.L126:
+ 936 03a8 00000000 		.word	.LANCHOR1
+ 937 03ac 00000000 		.word	.LANCHOR0
+ 938              		.cfi_endproc
+ 939              	.LFE128:
+ 941              		.global	load
+ 942              		.section	.bss.keys,"aw",%nobits
+ 943              		.align	2
+ 944              		.set	.LANCHOR0,. + 0
+ 947              	keys:
+ 948 0000 00000000 		.space	8
+ 948      00000000 
+ 949              		.section	.bss.load,"aw",%nobits
+ 950              		.set	.LANCHOR1,. + 0
+ 953              	load:
+ 954 0000 00       		.space	1
+ 955              		.text
+ 956              	.Letext0:
+ 957              		.file 2 "/usr/lib/gcc/arm-none-eabi/9.2.1/include/stdint.h"
+ 958              		.file 3 "keyboard/keyboard.h"
+ 959              		.file 4 "emulator/input/input.h"
+ 960              		.file 5 "/usr/lib/gcc/arm-none-eabi/9.2.1/include/stddef.h"
+ 961              		.file 6 "/usr/include/newlib/sys/_types.h"
+ 962              		.file 7 "/usr/include/newlib/sys/reent.h"
+ 963              		.file 8 "/usr/include/newlib/sys/lock.h"
+ 964              		.file 9 "Drivers/CMSIS/Include/core_cm4.h"
+ 965              		.file 10 "Drivers/CMSIS/Device/ST/STM32F4xx/Include/system_stm32f4xx.h"
+ARM GAS  /tmp/ccicOIm8.s 			page 24
+
+
+DEFINED SYMBOLS
+                            *ABS*:0000000000000000 input.c
+     /tmp/ccicOIm8.s:18     .text.input_key_init:0000000000000000 $t
+     /tmp/ccicOIm8.s:26     .text.input_key_init:0000000000000000 input_key_init
+     /tmp/ccicOIm8.s:44     .text.input_key_init:000000000000000c $d
+     /tmp/ccicOIm8.s:49     .text.input_key_get:0000000000000000 $t
+     /tmp/ccicOIm8.s:56     .text.input_key_get:0000000000000000 input_key_get
+     /tmp/ccicOIm8.s:84     .text.input_key_get:000000000000001a $d
+     /tmp/ccicOIm8.s:148    .text.input_key_get:000000000000005a $t
+     /tmp/ccicOIm8.s:340    .text.input_key_get:00000000000000ec $d
+     /tmp/ccicOIm8.s:345    .text.input_key_set:0000000000000000 $t
+     /tmp/ccicOIm8.s:352    .text.input_key_set:0000000000000000 input_key_set
+     /tmp/ccicOIm8.s:606    .text.input_key_set:00000000000001ec $d
+     /tmp/ccicOIm8.s:623    .text.input_key_set:000000000000022c $t
+     /tmp/ccicOIm8.s:936    .text.input_key_set:00000000000003a8 $d
+     /tmp/ccicOIm8.s:953    .bss.load:0000000000000000 load
+     /tmp/ccicOIm8.s:943    .bss.keys:0000000000000000 $d
+     /tmp/ccicOIm8.s:947    .bss.keys:0000000000000000 keys
+     /tmp/ccicOIm8.s:954    .bss.load:0000000000000000 $d
+
+UNDEFINED SYMBOLS
+keyboard_scan
